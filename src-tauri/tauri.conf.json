@@ -3,12 +3,28 @@
   "productName": "dsh-studio",
   "version": "0.1.0",
   "identifier": "com.dsh.studio",
-  "build": { "frontendDist": "../ui" },
+  "build": {
+    "frontendDist": "../ui"
+  },
   "app": {
     "windows": [
       { "label": "main", "title": "dsh-studio", "width": 1280, "height": 800 }
     ],
     "security": { "csp": null }
   },
-  "bundle": { "active": false }
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "publisher": "dsh-studio",
+    "resources": {
+      "../runtime": "runtime"
+    },
+    "createUpdaterArtifacts": false,
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
 }
