@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 
 pub struct SidecarHandle {
     child: Child,
-    port: u16,
 }
 
 /// 启动 node <dsh_bin> web，绑定 loopback，设置 DSH_HOME。
@@ -16,7 +15,7 @@ pub fn spawn(node: &str, dsh_bin: &str, port: u16, dsh_home: &str) -> std::io::R
         .arg("--port").arg(port.to_string())
         .env("DSH_HOME", dsh_home)
         .spawn()?;
-    Ok(SidecarHandle { child, port })
+    Ok(SidecarHandle { child })
 }
 
 /// TCP 连接探测：端口开始接受连接即认为就绪。
@@ -34,8 +33,6 @@ pub fn wait_ready(port: u16, timeout: Duration) -> bool {
 }
 
 impl SidecarHandle {
-    pub fn port(&self) -> u16 { self.port }
-
     /// 终止 sidecar 及其整棵子进程树（agent 会 spawn bash/pwsh/工具子进程）。
     pub fn kill(self) {
         let pid = self.child.id();
