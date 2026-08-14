@@ -12,7 +12,7 @@
 // 关键：profile 自带 pnpm-workspace.yaml（packages: ['.']，即 profile 自身是 workspace 根），
 // 因此 pnpm add 必须带 -w，否则报 ERR_PNPM_ADDING_TO_ROOT。
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, existsSync, rmSync, renameSync } from 'node:fs'
+import { mkdirSync, existsSync, rmSync, renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -51,14 +51,19 @@ if (!existsSync(join(runtime, 'host', 'node_modules', '@deepseek-ai', 'dsh'))) {
 const dshBin = join(runtime, 'host', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 
 // 3. 在受控 DSH_HOME 下安装插件（需要本机 pnpm；profile 是 workspace 根，须加 -w）
+// 只装 dsh-web-ui-all：它已依赖 dsh-skins 并自带 ui-skin-center loader 条目，
+// 再单独加 dsh-skins 会导致 duplicate loader entry id: ui-skin-center。
+// 另：pnpm 9 忽略 pnpm-workspace.yaml 里的 nodeLinker，必须用 .npmrc 的
+// node-linker=hoisted 把传递依赖提升到 node_modules 顶层，否则 cordis loader
+// 从 profile 目录 import 不到这些插件包。
 const home = join(runtime, 'home')
 if (!existsSync(join(home, 'profiles'))) {
-  mkdirSync(home, { recursive: true })
+  mkdirSync(join(home, 'profiles', 'web'), { recursive: true })
+  writeFileSync(join(home, 'profiles', 'web', '.npmrc'), 'node-linker=hoisted\n')
   run(
     node,
     [dshBin, 'plugin', '--profile', 'web', 'add', '-w',
-      `@linxin666/dsh-web-ui-all@${PLUGIN_VERSION}`,
-      `@linxin666/dsh-skins@${PLUGIN_VERSION}`],
+      `@linxin666/dsh-web-ui-all@${PLUGIN_VERSION}`],
     { env: { ...process.env, DSH_HOME: home } },
   )
 }

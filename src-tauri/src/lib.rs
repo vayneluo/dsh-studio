@@ -1,10 +1,29 @@
 mod port;
 mod sidecar;
 
+use std::path::Path;
 use std::sync::Mutex;
 use tauri::Manager;
 
 struct SidecarState(Mutex<Option<sidecar::SidecarHandle>>);
+
+/// 递归复制目录（bundle-host.mjs 打包的 runtime/home 不含符号链接/junction，
+/// 普通 fs::copy 即可完整复制）。
+fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
 
 pub fn run() {
     tauri::Builder::default()
@@ -15,6 +34,15 @@ pub fn run() {
                 .join("runtime/host/node_modules/@deepseek-ai/dsh/lib/bin.js");
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
+
+            // 首次运行：把打包进 resources 的 runtime/home（含 web profile + 插件）
+            // 播种到 app_data_dir 作为 DSH_HOME。仅当 profiles 不存在时复制，
+            // 避免覆盖用户后续写入的 key / 设置。
+            let bundled_home = resource_dir.join("runtime/home");
+            let profiles = data_dir.join("profiles");
+            if !profiles.exists() && bundled_home.exists() {
+                copy_dir_recursive(&bundled_home, &data_dir)?;
+            }
 
             let port = port::find_free_port()?;
             let handle = sidecar::spawn(
