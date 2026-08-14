@@ -68,6 +68,15 @@ if (!existsSync(join(home, 'profiles'))) {
   )
 }
 
+// 3.5 清理 pnpm 的 .pnpm 虚拟存储：它是对同一批文件的硬链接镜像，打包进 NSIS
+// 时硬链接会各自展开成独立文件（体积翻倍），且其嵌套路径超长会让 makensis
+// 打开文件失败。hoisted 布局下顶层 node_modules 已自包含，删掉 .pnpm 不影响
+// cordis loader 解析插件（已实测 boot 正常）。
+const pnpmStore = join(home, 'profiles', 'web', 'node_modules', '.pnpm')
+if (existsSync(pnpmStore)) {
+  rmSync(pnpmStore, { recursive: true, force: true })
+}
+
 // 4. 校验：dump-config 应包含插件层
 run(node, [dshBin, 'web', '--dump-config'], { env: { ...process.env, DSH_HOME: home } })
 console.log('bundle-host done')
