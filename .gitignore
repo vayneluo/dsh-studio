@@ -19,3 +19,6 @@ Thumbs.db
 release/
 *.msi
 *.exe
+
+# runtime 构建产物（bundle-host.mjs 生成）
+runtime/
