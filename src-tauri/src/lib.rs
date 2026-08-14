@@ -1,4 +1,5 @@
 mod port;
+mod sidecar;
 
 pub fn run() {
     tauri::Builder::default()
