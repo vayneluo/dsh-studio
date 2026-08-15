@@ -1,3 +1,4 @@
+use crate::job::Job;
 use std::ffi::OsString;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
@@ -11,6 +12,7 @@ pub(crate) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub struct SidecarHandle {
     child: Child,
+    _job: Job,
 }
 
 #[derive(Debug)]
@@ -60,8 +62,14 @@ pub fn spawn(
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr))
         .creation_flags(spec.creation_flags);
-    let child = command.spawn()?;
-    Ok(SidecarHandle { child })
+    let job = Job::new()?;
+    let mut child = command.spawn()?;
+    if let Err(error) = job.assign(&child) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(error);
+    }
+    Ok(SidecarHandle { child, _job: job })
 }
 
 fn probe_http(port: u16, timeout: Duration) -> bool {
