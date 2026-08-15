@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -9,24 +9,103 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = join(scriptsDir, '..')
 const moduleUrl = pathToFileURL(join(scriptsDir, 'provider-onboarding-override.mjs')).href
-const runtimePackages = join(projectRoot, 'runtime', 'host', 'node_modules', '@deepseek-ai')
-
 const packageNames = [
   'dsh-client-ui-settings-models',
   'dsh-client-ui-settings-general',
   'dsh-client-ui-model-selection',
 ]
 
+const modelsClientFixture = `function modelsClientFixture() {
+\t\t//#region lib/types/client/DeepSeekOnboardingDialog.js
+\t\tfunction CustomProviderCard(props) {
+\t\t\tconst protocols = [];
+\t\t\tconst [route, setRoute] = (0, react.useState)("");
+\t\t\tconst [displayName, setDisplayName] = (0, react.useState)("");
+\t\t\tconst [baseURL, setBaseURL] = (0, react.useState)("");
+\t\t\tconst [protocol, setProtocol] = (0, react.useState)(protocols[0] ?? "");
+\t\t}
+\t\tfunction install(ctx, controller, welcomeController, connection, t) {
+\t\t\tconst deepSeekOnboardingInjected = () => ({
+\t\t\t\tcontroller,
+\t\t\t\thooks: { models: controller.store },
+\t\t\t\tapi: connection.api,
+\t\t\t\tt
+\t\t\t});
+\t\t\tctx.effect(() => {
+\t\t\t\tconst refreshModels = () => {
+\t\t\t\t\trefreshIfLoaded(controller);
+\t\t\t\t};
+\t\t\t\tconst refreshAll = () => {
+\t\t\t\t\trefreshModels();
+\t\t\t\t\trefreshWelcomeIfLoaded(welcomeController);
+\t\t\t\t};
+\t\t\t\tconst disposers = [
+\t\t\t\t\tctx.remote.$on("settings/document-updated", (ns) => {
+\t\t\t\t\t\trefreshModels();
+\t\t\t\t\t\tif (ns === "ui-onboarding") refreshWelcomeIfLoaded(welcomeController);
+\t\t\t\t\t}),
+\t\t\t\t\tctx.on("connection/reset", refreshAll)
+\t\t\t\t];
+\t\t\t\treturn () => { for (const dispose of disposers) dispose(); };
+\t\t\t});
+\t\t\tctx.slots.inject("settings.onboarding", () => ctx.slots.register({
+\t\t\t\tname: "settings.onboarding",
+\t\t\t\tid: "deepseek-official",
+\t\t\t\torder: 0,
+\t\t\t\tinject: deepSeekOnboardingInjected
+\t\t\t}, DeepSeekOnboardingDialog));
+\t\t}
+}
+`
+
+const generalHostFixture = 'const OnboardingSettingsSchema = z.object({ welcomeNoticeVersion: z.string() });\n'
+
+const generalClientFixture = `function SettingsRoot() {
+\t\t\tconst openSection = (0, react.useCallback)((id) => {
+\t\t\t\tsetActiveId(id);
+\t\t\t\tsetOpen(true);
+\t\t\t}, []);
+}
+`
+
+const modelSelectionClientFixture = `function ModelSelect() {
+\tconst state = { status: "ready" };
+\tconst choices = [];
+\tconst close = () => {};
+\tconst t = (key) => key;
+\treturn [
+\t\t\t\t\t\t\t\tstate.status === "ready" && choices.length === 0 && (0, react_jsx_runtime.jsx)("div", {
+\t\t\t\t\t\t\t\t\tclassName: ModelSelect_module_css_default.empty,
+\t\t\t\t\t\t\t\t\tchildren: t("empty.models")
+\t\t\t\t\t\t\t\t})
+\t];
+}
+const zh = {
+\t\t\t"action.reload": "重新加载",
+\t\t\t"empty.models": "没有可用的模型。"
+};
+const en = {
+\t\t\t"action.reload": "Reload",
+\t\t\t"empty.models": "No models available."
+};
+`
+
 const makeRuntimeFixture = (t) => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-provider-onboarding-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const scope = join(root, 'node_modules', '@deepseek-ai')
   for (const packageName of packageNames) {
-    const source = join(runtimePackages, packageName)
     const target = join(scope, packageName)
-    cpSync(join(source, 'package.json'), join(target, 'package.json'), { recursive: true })
-    cpSync(join(source, 'lib'), join(target, 'lib'), { recursive: true })
+    mkdirSync(join(target, 'lib'), { recursive: true })
+    writeFileSync(join(target, 'package.json'), JSON.stringify({
+      name: `@deepseek-ai/${packageName}`,
+      version: '0.1.0-rc.6',
+    }))
   }
+  writeFileSync(modelsClientPath(root), modelsClientFixture)
+  writeFileSync(generalHostPath(root), generalHostFixture)
+  writeFileSync(generalClientPath(root), generalClientFixture)
+  writeFileSync(modelSelectionClientPath(root), modelSelectionClientFixture)
   return root
 }
 
@@ -98,14 +177,14 @@ test('rejects an unsupported Harness package version before editing files', asyn
   )
 })
 
-test('extends the durable onboarding schema with a provider setup version', async (t) => {
+test('extends the durable onboarding schema with Schemastery optional-field syntax', async (t) => {
   const host = makeRuntimeFixture(t)
   const { applyProviderOnboardingOverride } = await import(moduleUrl)
 
   applyProviderOnboardingOverride(host)
 
   const source = readFileSync(generalHostPath(host), 'utf8')
-  assert.match(source, /providerSetupVersion: z\.string\(\)\.optional\(\)/)
+  assert.match(source, /providerSetupVersion: z\.string\(\)\.required\(false\)/)
 })
 
 test('rejects a missing transform anchor without changing the target', async (t) => {
@@ -189,6 +268,18 @@ test('keeps provider selection separate from configuration and prefills compatib
   assert.match(source, /react\.useState\)\(props\.initialProtocol \?\? protocols\[0\] \?\? ""\)/)
 })
 
+test('keeps the selected provider editor mounted when navigating back', async (t) => {
+  const host = makeRuntimeFixture(t)
+  const { applyProviderOnboardingOverride } = await import(moduleUrl)
+
+  applyProviderOnboardingOverride(host)
+
+  const source = readFileSync(modelsClientPath(host), 'utf8')
+  assert.match(source, /const showingSelection = step === 1 \|\| selected === void 0/)
+  assert.match(source, /className: "provider-wizard__selection",\s+hidden: !showingSelection/)
+  assert.match(source, /className: "provider-wizard__configuration",\s+hidden: showingSelection/)
+})
+
 test('refreshes durable provider setup state on settings and connection changes', async (t) => {
   const host = makeRuntimeFixture(t)
   const { applyProviderOnboardingOverride } = await import(moduleUrl)
@@ -231,6 +322,7 @@ test('matches native provider rows with the compatible preset aliases', async (t
   const source = readFileSync(modelsClientPath(host), 'utf8')
   assert.match(source, /aliases: \["alibaba", "qwen", "bailian"\]/)
   assert.match(source, /aliases: \["volcengine", "doubao", "volcengine-ark"\]/)
+  assert.match(source, /id: "ollama"[\s\S]{0,420}baseURL: "http:\/\/127\.0\.0\.1:11434\/v1"/)
 })
 
 test('documents local monograms and provider trademark ownership', () => {

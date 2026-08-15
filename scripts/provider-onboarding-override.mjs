@@ -218,7 +218,7 @@ export const applyProviderOnboardingOverride = (hostDir) => {
     'index.js',
   )
   const schemaAnchor = 'const OnboardingSettingsSchema = z.object({ welcomeNoticeVersion: z.string() });'
-  const schemaReplacement = 'const OnboardingSettingsSchema = z.object({ welcomeNoticeVersion: z.string(), providerSetupVersion: z.string().optional() });'
+  const schemaReplacement = 'const OnboardingSettingsSchema = z.object({ welcomeNoticeVersion: z.string(), providerSetupVersion: z.string().required(false) });'
   const generalHostSource = replaceExactlyOnce(
     readText(generalHost),
     schemaAnchor,

@@ -144,74 +144,76 @@
 			if (setup.status === "idle" || setup.status === "loading" || state.status === "idle" || state.status === "loading") return null;
 			if (setup.completed || state.status === "error" || anyUsable) return null;
 			const skip = () => { finish(); };
-			if (step === 1 || selected === void 0) return (0, react_jsx_runtime.jsx)(OnboardingModal, {
-				title: copy.title,
-				children: (0, react_jsx_runtime.jsxs)("div", {
-					className: "provider-wizard",
-					children: [(0, react_jsx_runtime.jsx)(WizardProgress, { step: 1, copy, onSkip: skip }), (0, react_jsx_runtime.jsx)("p", {
-						className: "provider-wizard__description",
-						children: copy.description
-					}), PROVIDER_GROUPS.map((group) => (0, react_jsx_runtime.jsxs)("section", {
-						className: "provider-wizard__group",
-						children: [(0, react_jsx_runtime.jsx)("h3", {
-							className: "provider-wizard__group-title",
-							children: localized(group.label, language)
-						}), (0, react_jsx_runtime.jsx)("div", {
-							className: "provider-wizard__grid",
-							children: group.providers.map((provider) => {
-								const available = providerRow(provider, state.rows) !== void 0 || customAvailable(provider, state);
-								return (0, react_jsx_runtime.jsx)(ProviderCard, {
-									provider,
-									language,
-									selected: selectedId === provider.id,
-									disabled: !available,
-									onSelect: () => { setSelectedId(provider.id); }
-								}, provider.id);
-							})
-						})]
-					}, group.id)), (0, react_jsx_runtime.jsxs)("div", {
-						className: "provider-wizard__footer",
-						children: [(0, react_jsx_runtime.jsx)("span", {
-							className: "provider-wizard__privacy",
-							children: copy.privacy
-						}), (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: "provider-wizard__primary",
-							disabled: selectedId === void 0,
-							onClick: () => { setStep(2); },
-							children: copy.continue
-						})]
-					})]
-				})
-			});
-			const title = providerSetupText(copy.configure, selected.label);
-			const available = providerRow(selected, state.rows) !== void 0 || customAvailable(selected, state);
+			const showingSelection = step === 1 || selected === void 0;
+			const title = showingSelection ? copy.title : providerSetupText(copy.configure, selected.label);
+			const available = selected !== void 0 && (providerRow(selected, state.rows) !== void 0 || customAvailable(selected, state));
 			return (0, react_jsx_runtime.jsx)(OnboardingModal, {
 				title,
 				children: (0, react_jsx_runtime.jsxs)("div", {
 					className: "provider-wizard",
-					children: [(0, react_jsx_runtime.jsx)(WizardProgress, { step: 2, copy, onSkip: skip }), (0, react_jsx_runtime.jsx)("button", {
-						type: "button",
-						className: "provider-wizard__back",
-						onClick: () => { setStep(1); },
-						children: `← ${copy.back}`
-					}), (0, react_jsx_runtime.jsx)("p", {
-						className: "provider-wizard__description",
-						children: copy.configureDescription
-					}), available ? (0, react_jsx_runtime.jsx)("div", {
-						className: "provider-wizard__editor",
-						children: (0, react_jsx_runtime.jsx)(ProviderConfiguration, {
-							provider: selected,
-							state,
-							controller,
-							api,
-							t,
-							onBack: () => { setStep(1); }
-						}, selected.id)
-					}) : (0, react_jsx_runtime.jsx)("p", {
-						className: "provider-wizard__error",
-						role: "alert",
-						children: copy.unavailable
+					children: [(0, react_jsx_runtime.jsx)(WizardProgress, { step: showingSelection ? 1 : 2, copy, onSkip: skip }), (0, react_jsx_runtime.jsxs)("div", {
+						className: "provider-wizard__selection",
+						hidden: !showingSelection,
+						children: [(0, react_jsx_runtime.jsx)("p", {
+							className: "provider-wizard__description",
+							children: copy.description
+						}), PROVIDER_GROUPS.map((group) => (0, react_jsx_runtime.jsxs)("section", {
+							className: "provider-wizard__group",
+							children: [(0, react_jsx_runtime.jsx)("h3", {
+								className: "provider-wizard__group-title",
+								children: localized(group.label, language)
+							}), (0, react_jsx_runtime.jsx)("div", {
+								className: "provider-wizard__grid",
+								children: group.providers.map((provider) => {
+									const providerAvailable = providerRow(provider, state.rows) !== void 0 || customAvailable(provider, state);
+									return (0, react_jsx_runtime.jsx)(ProviderCard, {
+										provider,
+										language,
+										selected: selectedId === provider.id,
+										disabled: !providerAvailable,
+										onSelect: () => { setSelectedId(provider.id); }
+									}, provider.id);
+								})
+							})]
+						}, group.id)), (0, react_jsx_runtime.jsxs)("div", {
+							className: "provider-wizard__footer",
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: "provider-wizard__privacy",
+								children: copy.privacy
+							}), (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: "provider-wizard__primary",
+								disabled: selectedId === void 0,
+								onClick: () => { setStep(2); },
+								children: copy.continue
+							})]
+						})]
+					}), selected !== void 0 && (0, react_jsx_runtime.jsxs)("div", {
+						className: "provider-wizard__configuration",
+						hidden: showingSelection,
+						children: [(0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							className: "provider-wizard__back",
+							onClick: () => { setStep(1); },
+							children: `← ${copy.back}`
+						}), (0, react_jsx_runtime.jsx)("p", {
+							className: "provider-wizard__description",
+							children: copy.configureDescription
+						}), available ? (0, react_jsx_runtime.jsx)("div", {
+							className: "provider-wizard__editor",
+							children: (0, react_jsx_runtime.jsx)(ProviderConfiguration, {
+								provider: selected,
+								state,
+								controller,
+								api,
+								t,
+								onBack: () => { setStep(1); }
+							}, selected.id)
+						}) : (0, react_jsx_runtime.jsx)("p", {
+							className: "provider-wizard__error",
+							role: "alert",
+							children: copy.unavailable
+						})]
 					})]
 				})
 			});

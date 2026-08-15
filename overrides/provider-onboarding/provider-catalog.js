@@ -69,7 +69,20 @@
 				id: "local-custom",
 				label: { zh: "本地与自定义", en: "Local and custom" },
 				providers: [
-					{ id: "ollama", label: "Ollama", description: { zh: "连接本地模型", en: "Connect local models" }, aliases: ["ollama"], mark: "O", accent: "ollama" },
+					{
+						id: "ollama",
+						label: "Ollama",
+						description: { zh: "连接本地模型", en: "Connect local models" },
+						aliases: ["ollama"],
+						mark: "O",
+						accent: "ollama",
+						preset: {
+							route: "ollama",
+							displayName: "Ollama",
+							baseURL: "http://127.0.0.1:11434/v1",
+							api: "openai-completions"
+						}
+					},
 					{ id: "compatible", label: "OpenAI Compatible", description: { zh: "自定义 Base URL 与模型", en: "Custom Base URL and models" }, custom: true, mark: "↗", accent: "compatible" }
 				]
 			}
