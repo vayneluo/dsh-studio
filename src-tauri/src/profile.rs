@@ -1,10 +1,7 @@
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
-const LEGACY_PACKAGES: [&str; 2] = [
-    "@linxin666/dsh-web-ui-all",
-    "@linxin666/dsh-skins",
-];
+const LEGACY_PACKAGES: [&str; 2] = ["@linxin666/dsh-web-ui-all", "@linxin666/dsh-skins"];
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Migration {
@@ -19,8 +16,7 @@ fn path_error(action: &str, path: &Path, error: impl std::fmt::Display) -> Strin
 fn replace_manifest(path: &Path, contents: &[u8]) -> Result<(), String> {
     let temporary = path.with_extension(format!("json.{}.tmp", std::process::id()));
     let backup = path.with_extension(format!("json.{}.backup", std::process::id()));
-    std::fs::write(&temporary, contents)
-        .map_err(|error| path_error("write", &temporary, error))?;
+    std::fs::write(&temporary, contents).map_err(|error| path_error("write", &temporary, error))?;
 
     std::fs::rename(path, &backup).map_err(|error| path_error("back up", path, error))?;
     if let Err(error) = std::fs::rename(&temporary, path) {
@@ -88,8 +84,8 @@ pub fn migrate_legacy_web_profile(dsh_home: &Path) -> Result<Migration, String> 
         });
     }
 
-    let source = std::fs::read(&manifest_path)
-        .map_err(|error| path_error("read", &manifest_path, error))?;
+    let source =
+        std::fs::read(&manifest_path).map_err(|error| path_error("read", &manifest_path, error))?;
     let mut manifest: Value = serde_json::from_slice(&source)
         .map_err(|error| path_error("parse", &manifest_path, error))?;
     let (changed, clear_cache) = remove_legacy_entries(&mut manifest)?;

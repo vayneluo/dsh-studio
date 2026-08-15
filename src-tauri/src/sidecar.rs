@@ -21,12 +21,7 @@ pub(crate) struct SpawnSpec {
     creation_flags: u32,
 }
 
-pub(crate) fn spawn_spec(
-    node: &Path,
-    dsh_bin: &Path,
-    port: u16,
-    dsh_home: &Path,
-) -> SpawnSpec {
+pub(crate) fn spawn_spec(node: &Path, dsh_bin: &Path, port: u16, dsh_home: &Path) -> SpawnSpec {
     SpawnSpec {
         program: node.to_path_buf(),
         args: vec![

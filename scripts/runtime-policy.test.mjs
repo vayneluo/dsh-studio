@@ -84,3 +84,12 @@ test('bundle host builds only the official DSH runtime', () => {
   assert.match(source, /pruneRuntime\(host\)/)
   assert.match(source, /auditRuntime\(runtime\)/)
 })
+
+test('startup page exposes a text-only error state', () => {
+  const source = readFileSync(join(projectRoot, 'ui', 'index.html'), 'utf8')
+
+  assert.match(source, /id=["']startup-error["']/)
+  assert.match(source, /window\.showStartupError/)
+  assert.match(source, /textContent/)
+  assert.doesNotMatch(source, /innerHTML/)
+})

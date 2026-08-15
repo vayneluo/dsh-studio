@@ -47,10 +47,8 @@ impl Drop for TestHome {
 }
 
 fn bundled_manifest(extra_dependency: Option<(&str, &str)>) -> Value {
-    let mut dependencies = serde_json::Map::from_iter([(
-        "@linxin666/dsh-web-ui-all".to_string(),
-        json!("0.1.11"),
-    )]);
+    let mut dependencies =
+        serde_json::Map::from_iter([("@linxin666/dsh-web-ui-all".to_string(), json!("0.1.11"))]);
     let mut bundles = vec![
         json!("@deepseek-ai/dsh-base"),
         json!("@deepseek-ai/dsh-web-app"),
@@ -73,9 +71,21 @@ fn removes_the_legacy_bundled_integration_and_its_profile_cache() {
     let home = TestHome::new();
     home.write_manifest(&bundled_manifest(None));
     fs::create_dir_all(home.path().join("profiles/web/node_modules/stale")).unwrap();
-    fs::write(home.path().join("profiles/web/node_modules/stale/file.js"), "x").unwrap();
-    fs::write(home.path().join("profiles/web/pnpm-lock.yaml"), "lockfileVersion: 9").unwrap();
-    fs::write(home.path().join("profiles/web/.npmrc"), "node-linker=hoisted").unwrap();
+    fs::write(
+        home.path().join("profiles/web/node_modules/stale/file.js"),
+        "x",
+    )
+    .unwrap();
+    fs::write(
+        home.path().join("profiles/web/pnpm-lock.yaml"),
+        "lockfileVersion: 9",
+    )
+    .unwrap();
+    fs::write(
+        home.path().join("profiles/web/.npmrc"),
+        "node-linker=hoisted",
+    )
+    .unwrap();
 
     let migration = migrate_legacy_web_profile(home.path()).unwrap();
     let manifest = home.read_manifest();
@@ -96,14 +106,21 @@ fn removes_the_legacy_bundled_integration_and_its_profile_cache() {
 fn preserves_user_plugins_and_their_cache() {
     let home = TestHome::new();
     home.write_manifest(&bundled_manifest(Some(("@example/user-plugin", "1.2.3"))));
-    fs::create_dir_all(home.path().join("profiles/web/node_modules/@example/user-plugin")).unwrap();
+    fs::create_dir_all(
+        home.path()
+            .join("profiles/web/node_modules/@example/user-plugin"),
+    )
+    .unwrap();
 
     let migration = migrate_legacy_web_profile(home.path()).unwrap();
     let manifest = home.read_manifest();
 
     assert!(migration.changed);
     assert!(!migration.cleared_bundled_cache);
-    assert_eq!(manifest["dependencies"], json!({ "@example/user-plugin": "1.2.3" }));
+    assert_eq!(
+        manifest["dependencies"],
+        json!({ "@example/user-plugin": "1.2.3" })
+    );
     assert_eq!(
         manifest["dsh"]["profile"]["bundles"],
         json!([
