@@ -1,7 +1,9 @@
-import { existsSync, lstatSync, readdirSync, renameSync, rmSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { basename, join, normalize } from 'node:path'
 
-export const DEFAULT_RUNTIME_BUDGET_BYTES = 230 * 1024 * 1024
+export const DEFAULT_PROFILE_BUDGET_BYTES = 35 * 1024 * 1024
+export const DEFAULT_RUNTIME_BUDGET_BYTES = 260 * 1024 * 1024
+export const DEFAULT_INSTALLER_BUDGET_BYTES = 70 * 1024 * 1024
 
 const removableTypePattern = /(?:\.pdb|\.map|\.d\.(?:ts|mts|cts))$/i
 const nodePtySourceDirectories = new Set([
@@ -32,6 +34,26 @@ const walkPhysicalFiles = (root) => {
   }
 
   return files
+}
+
+const findReparsePaths = (root) => {
+  const reparsePaths = []
+  const directories = [root]
+
+  while (directories.length > 0) {
+    const directory = directories.pop()
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      const stat = lstatSync(path)
+      if (stat.isSymbolicLink()) {
+        reparsePaths.push(path)
+        continue
+      }
+      if (stat.isDirectory()) directories.push(path)
+    }
+  }
+
+  return reparsePaths
 }
 
 const findNodePtyDirectories = (root) => {
@@ -152,4 +174,39 @@ export const auditRuntime = (
     forbiddenPaths,
     paths,
   }
+}
+
+export const auditPortableTree = (
+  root,
+  { maxBytes = DEFAULT_PROFILE_BUDGET_BYTES } = {},
+) => {
+  const reparsePaths = findReparsePaths(root)
+  if (reparsePaths.length > 0) {
+    throw new Error(`Profile contains a reparse point, symbolic link, or junction: ${reparsePaths[0]}`)
+  }
+
+  const physicalFiles = walkPhysicalFiles(root)
+  const forbiddenPaths = physicalFiles
+    .map((file) => file.path)
+    .filter((path) => normalize(path).includes(normalize('@linxin666')))
+  if (forbiddenPaths.length > 0) {
+    throw new Error(`Forbidden profile path: ${forbiddenPaths[0]}`)
+  }
+  const bytes = physicalFiles.reduce((total, file) => total + file.bytes, 0)
+  if (bytes > maxBytes) {
+    throw new Error(`Profile budget exceeded: ${bytes} bytes > ${maxBytes} bytes`)
+  }
+
+  return { bytes, files: physicalFiles.length, forbiddenPaths, reparsePaths }
+}
+
+export const auditInstaller = (
+  path,
+  { maxBytes = DEFAULT_INSTALLER_BUDGET_BYTES } = {},
+) => {
+  const bytes = statSync(path).size
+  if (bytes > maxBytes) {
+    throw new Error(`Installer budget exceeded: ${bytes} bytes > ${maxBytes} bytes`)
+  }
+  return { bytes, path }
 }

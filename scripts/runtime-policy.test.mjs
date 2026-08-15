@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
-import { auditRuntime, pruneRuntime, replaceRuntime } from './runtime-policy.mjs'
+import * as runtimePolicy from './runtime-policy.mjs'
+
+const {
+  auditInstaller,
+  auditPortableTree,
+  auditRuntime,
+  DEFAULT_INSTALLER_BUDGET_BYTES,
+  DEFAULT_PROFILE_BUDGET_BYTES,
+  DEFAULT_RUNTIME_BUDGET_BYTES,
+  pruneRuntime,
+  replaceRuntime,
+} = runtimePolicy
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = join(scriptsDir, '..')
@@ -74,6 +85,49 @@ test('auditRuntime enforces the expanded runtime byte budget', (t) => {
     () => auditRuntime(root, { maxBytes: 32 }),
     /runtime budget exceeded/i,
   )
+})
+
+test('release budgets allow a 35 MiB seed, 260 MiB runtime, and 70 MiB installer', () => {
+  assert.equal(DEFAULT_PROFILE_BUDGET_BYTES, 35 * 1024 * 1024)
+  assert.equal(DEFAULT_RUNTIME_BUDGET_BYTES, 260 * 1024 * 1024)
+  assert.equal(DEFAULT_INSTALLER_BUDGET_BYTES, 70 * 1024 * 1024)
+})
+
+test('auditPortableTree rejects junctions and symbolic links', (t) => {
+  const root = makeFixture()
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const target = join(root, 'store', 'plugin')
+  writeFixture(target, 'package.json', '{}')
+  const seed = join(root, 'seed')
+  mkdirSync(join(seed, 'node_modules'), { recursive: true })
+  symlinkSync(target, join(seed, 'node_modules', 'plugin'), 'junction')
+
+  assert.throws(() => auditPortableTree(seed), /reparse|symbolic|junction/i)
+})
+
+test('auditPortableTree enforces the profile byte budget', (t) => {
+  const root = makeFixture()
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  writeFixture(root, 'large.bin', Buffer.alloc(64))
+
+  assert.throws(() => auditPortableTree(root, { maxBytes: 32 }), /profile budget exceeded/i)
+})
+
+test('auditPortableTree rejects the removed enhanced Web UI', (t) => {
+  const root = makeFixture()
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  writeFixture(root, 'node_modules/@linxin666/dsh-web-ui-all/package.json', '{}')
+
+  assert.throws(() => auditPortableTree(root), /forbidden.*@linxin666/i)
+})
+
+test('auditInstaller enforces the compressed installer byte budget', (t) => {
+  const root = makeFixture()
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const installer = writeFixture(root, 'setup.exe', Buffer.alloc(64))
+
+  assert.throws(() => auditInstaller(installer, { maxBytes: 32 }), /installer budget exceeded/i)
+  assert.equal(auditInstaller(installer, { maxBytes: 64 }).bytes, 64)
 })
 
 test('replaceRuntime swaps in a clean staging tree without stale files', (t) => {
