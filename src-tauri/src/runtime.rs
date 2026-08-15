@@ -22,14 +22,14 @@ pub fn resolve_runtime_dir(
     project_root: &Path,
     development: bool,
 ) -> Result<PathBuf, String> {
-    let bundled = resource_dir.join("runtime");
-    if is_complete_runtime(&bundled) {
-        return Ok(bundled);
-    }
-
     let workspace = project_root.join("runtime");
     if development && is_complete_runtime(&workspace) {
         return Ok(workspace);
+    }
+
+    let bundled = resource_dir.join("runtime");
+    if is_complete_runtime(&bundled) {
+        return Ok(bundled);
     }
 
     Err(format!("DSH runtime is missing from {}", bundled.display()))
@@ -79,14 +79,14 @@ mod tests {
     }
 
     #[test]
-    fn prefers_the_bundled_resource_runtime() {
+    fn development_prefers_the_workspace_runtime_over_copied_resources() {
         let test = TestDir::new();
-        let expected = test.create_runtime("resources");
-        let project = test.create_runtime("project");
+        test.create_runtime("resources");
+        let expected = test.create_runtime("project");
 
         let actual = resolve_runtime_dir(
             &test.path().join("resources"),
-            project.parent().unwrap(),
+            expected.parent().unwrap(),
             true,
         )
         .unwrap();
