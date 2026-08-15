@@ -1,82 +1,121 @@
 #!/usr/bin/env node
-// 打包 runtime：下载 Node、npm 安装 @deepseek-ai/dsh、安装 dsh-web-ui 插件。
-//
-// 运行环境要求（仅构建机，终端用户不需要）：curl、unzip（Git Bash 自带）、npm、pnpm。
-//
-// profile 布局（实测 2026-08-14，DSH_HOME=runtime/home）：
-//   runtime/home/profiles/web/                    ← web profile 目录
-//   runtime/home/profiles/web/package.json        ← dependencies + dsh.profile.bundles（4 层）
-//   runtime/home/profiles/web/node_modules/       ← pnpm 安装的插件实际落点
-//   runtime/home/profiles/web/pnpm-workspace.yaml ← initProfile 生成，packages: ['.']
-//
-// 关键：profile 自带 pnpm-workspace.yaml（packages: ['.']，即 profile 自身是 workspace 根），
-// 因此 pnpm add 必须带 -w，否则报 ERR_PNPM_ADDING_TO_ROOT。
+// Build the distributable Windows x64 runtime: Node + official DSH only.
+// Build-machine requirements: curl and Windows PowerShell. End users need neither.
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, existsSync, rmSync, renameSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const root = join(__dirname, '..')
+import { buildDefaultProfile } from './default-profile.mjs'
+import { auditRuntime, pruneRuntime, replaceRuntime } from './runtime-policy.mjs'
+
+const scriptsDir = dirname(fileURLToPath(import.meta.url))
+const root = join(scriptsDir, '..')
 const runtime = join(root, 'runtime')
 const NODE_VERSION = '24.13.0'
 const DSH_VERSION = '0.1.0-rc.6'
-const PLUGIN_VERSION = '0.1.11'
+const NPM_REGISTRY = 'https://registry.npmjs.org/'
 
-function run(cmd, args, opts = {}) {
-  console.log('>', cmd, args.join(' '))
-  execFileSync(cmd, args, { stdio: 'inherit', ...opts })
+const run = (command, args, options = {}) => {
+  console.log('>', command, args.join(' '))
+  execFileSync(command, args, { stdio: 'inherit', ...options })
 }
 
-// 1. 下载并解包 Node 运行时（win-x64）
-if (!existsSync(join(runtime, 'node', 'node.exe'))) {
-  mkdirSync(join(runtime, 'node'), { recursive: true })
-  const zip = join(runtime, 'node.zip')
+const installNode = (nodeDir, staging) => {
+  const node = join(nodeDir, 'node.exe')
+  mkdirSync(nodeDir, { recursive: true })
+  const zip = join(staging, 'node.zip')
   run('curl', ['-sSL', '-o', zip, `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-x64.zip`])
-  run('unzip', ['-o', '-q', zip, '-d', join(runtime, 'node')])
-  const inner = join(runtime, 'node', `node-v${NODE_VERSION}-win-x64`)
-  renameSync(join(inner, 'node.exe'), join(runtime, 'node', 'node.exe'))
-  rmSync(inner, { recursive: true, force: true })
+  run('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    'Expand-Archive -LiteralPath $env:DSH_NODE_ZIP -DestinationPath $env:DSH_NODE_DIR -Force',
+  ], {
+    env: { ...process.env, DSH_NODE_ZIP: zip, DSH_NODE_DIR: nodeDir },
+  })
+  const extracted = join(nodeDir, `node-v${NODE_VERSION}-win-x64`)
+  const npmCli = join(extracted, 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  renameSync(join(extracted, 'node.exe'), node)
   rmSync(zip, { force: true })
+  return { node, npmCli, extracted }
 }
 
-const node = join(runtime, 'node', 'node.exe')
-
-// 2. npm 安装 @deepseek-ai/dsh 到 runtime/host
-if (!existsSync(join(runtime, 'host', 'node_modules', '@deepseek-ai', 'dsh'))) {
-  mkdirSync(join(runtime, 'host'), { recursive: true })
-  run('npm', ['install', '--prefix', join(runtime, 'host'), `@deepseek-ai/dsh@${DSH_VERSION}`])
-}
-
-const dshBin = join(runtime, 'host', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-
-// 3. 在受控 DSH_HOME 下安装插件（需要本机 pnpm；profile 是 workspace 根，须加 -w）
-// 只装 dsh-web-ui-all：它已依赖 dsh-skins 并自带 ui-skin-center loader 条目，
-// 再单独加 dsh-skins 会导致 duplicate loader entry id: ui-skin-center。
-// 另：pnpm 9 忽略 pnpm-workspace.yaml 里的 nodeLinker，必须用 .npmrc 的
-// node-linker=hoisted 把传递依赖提升到 node_modules 顶层，否则 cordis loader
-// 从 profile 目录 import 不到这些插件包。
-const home = join(runtime, 'home')
-if (!existsSync(join(home, 'profiles'))) {
-  mkdirSync(join(home, 'profiles', 'web'), { recursive: true })
-  writeFileSync(join(home, 'profiles', 'web', '.npmrc'), 'node-linker=hoisted\n')
-  run(
-    node,
-    [dshBin, 'plugin', '--profile', 'web', 'add', '-w',
-      `@linxin666/dsh-web-ui-all@${PLUGIN_VERSION}`],
-    { env: { ...process.env, DSH_HOME: home } },
+const installDsh = (node, npmCli, host, staging) => {
+  const dshBin = join(host, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  const userConfig = join(staging, 'npm-user.ini')
+  const globalConfig = join(staging, 'npm-global.ini')
+  mkdirSync(host, { recursive: true })
+  writeFileSync(userConfig, '')
+  writeFileSync(globalConfig, '')
+  const npmEnv = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.toLowerCase().startsWith('npm_config_')),
   )
+  const pathKey = Object.keys(npmEnv).find((name) => name.toLowerCase() === 'path') ?? 'Path'
+  npmEnv[pathKey] = `${dirname(node)}${delimiter}${npmEnv[pathKey] ?? ''}`
+  npmEnv.NPM_CONFIG_USERCONFIG = userConfig
+  npmEnv.NPM_CONFIG_GLOBALCONFIG = globalConfig
+  npmEnv.NPM_CONFIG_REGISTRY = NPM_REGISTRY
+  try {
+    run(node, [
+      npmCli,
+      'install',
+      '--prefix',
+      host,
+      `--registry=${NPM_REGISTRY}`,
+      '--@deepseek-ai:registry=https://registry.npmjs.org/',
+      '--no-audit',
+      '--no-fund',
+      `@deepseek-ai/dsh@${DSH_VERSION}`,
+    ], { env: npmEnv })
+  } finally {
+    rmSync(userConfig, { force: true })
+    rmSync(globalConfig, { force: true })
+  }
+  return dshBin
 }
 
-// 3.5 清理 pnpm 的 .pnpm 虚拟存储：它是对同一批文件的硬链接镜像，打包进 NSIS
-// 时硬链接会各自展开成独立文件（体积翻倍），且其嵌套路径超长会让 makensis
-// 打开文件失败。hoisted 布局下顶层 node_modules 已自包含，删掉 .pnpm 不影响
-// cordis loader 解析插件（已实测 boot 正常）。
-const pnpmStore = join(home, 'profiles', 'web', 'node_modules', '.pnpm')
-if (existsSync(pnpmStore)) {
-  rmSync(pnpmStore, { recursive: true, force: true })
+const verifyOfficialProfile = (node, dshBin) => {
+  const home = mkdtempSync(join(tmpdir(), 'dsh-studio-bundle-check-'))
+  try {
+    const config = execFileSync(node, [dshBin, 'web', '--dump-default-config'], {
+      encoding: 'utf8',
+      env: { ...process.env, DSH_HOME: home },
+    })
+    if (!config.includes('@deepseek-ai/dsh-web-app')) {
+      throw new Error('Official DSH Web profile is missing its application bundle')
+    }
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
 }
 
-// 4. 校验：dump-config 应包含插件层
-run(node, [dshBin, 'web', '--dump-config'], { env: { ...process.env, DSH_HOME: home } })
-console.log('bundle-host done')
+const staging = mkdtempSync(join(root, '.runtime-stage-'))
+const host = join(staging, 'host')
+const nodeDir = join(staging, 'node')
+
+try {
+  const { node, npmCli, extracted } = installNode(nodeDir, staging)
+  const dshBin = installDsh(node, npmCli, host, staging)
+  const profile = buildDefaultProfile({ node, dshBin, staging })
+  rmSync(extracted, { recursive: true, force: true })
+  const pruned = pruneRuntime(host)
+  verifyOfficialProfile(node, dshBin)
+  run(process.execPath, [join(scriptsDir, 'smoke-test.mjs')], {
+    env: {
+      ...process.env,
+      DSH_SMOKE_RUNTIME_DIR: staging,
+      DSH_SMOKE_USE_SEED: '1',
+    },
+  })
+  const audit = auditRuntime(staging)
+  replaceRuntime(staging, runtime)
+
+  console.log(`Pruned ${pruned.removedFiles} files (${(pruned.removedBytes / 1024 / 1024).toFixed(2)} MiB)`)
+  console.log(`Default profile ${profile.audit.files} files, ${(profile.audit.bytes / 1024 / 1024).toFixed(2)} MiB`)
+  console.log(`Runtime ${audit.files} files, ${(audit.bytes / 1024 / 1024).toFixed(2)} MiB`)
+  console.log('bundle-host done')
+} finally {
+  rmSync(staging, { recursive: true, force: true })
+}

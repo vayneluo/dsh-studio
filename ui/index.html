@@ -1,4 +1,155 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>dsh-studio</title>
-<style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui;background:#0d1117;color:#e6edf3}.spinner{width:24px;height:24px;border:3px solid #30363d;border-top-color:#58a6ff;border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}</style>
-</head><body><div style="text-align:center"><div class="spinner" style="margin:0 auto 12px"></div><div>正在启动 DeepSeek Harness…</div></div></body></html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>dsh-studio</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f1f0e9;
+        --muted: #96958e;
+        --surface: #151613;
+        --line: #34352f;
+        --signal: #d8ff3e;
+        --danger: #ff6b57;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        color: var(--ink);
+        background:
+          linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+          #0d0e0b;
+        background-size: 32px 32px;
+        font-family: "Bahnschrift", "Segoe UI Variable", sans-serif;
+      }
+
+      main {
+        width: min(660px, calc(100vw - 64px));
+        border-top: 1px solid var(--line);
+        padding: 28px 0 0;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--muted);
+        font: 600 11px/1 "Cascadia Code", monospace;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+      }
+
+      .signal {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--signal);
+        box-shadow: 0 0 22px rgba(216, 255, 62, .55);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      h1 {
+        margin: 28px 0 12px;
+        font-size: clamp(42px, 8vw, 82px);
+        font-weight: 520;
+        line-height: .92;
+        letter-spacing: -.055em;
+      }
+
+      .status {
+        margin: 0;
+        color: var(--muted);
+        font: 14px/1.7 "Cascadia Code", monospace;
+      }
+
+      .rail {
+        position: relative;
+        height: 2px;
+        margin-top: 34px;
+        overflow: hidden;
+        background: var(--line);
+      }
+
+      .rail::after {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 -32%;
+        width: 32%;
+        background: var(--signal);
+        animation: scan 1.2s cubic-bezier(.7, 0, .3, 1) infinite;
+      }
+
+      #startup-error {
+        display: none;
+        margin-top: 28px;
+        padding: 20px;
+        border: 1px solid color-mix(in srgb, var(--danger), transparent 58%);
+        background: color-mix(in srgb, var(--danger), transparent 92%);
+      }
+
+      #startup-error.visible { display: block; }
+      #startup-error h2 { margin: 0 0 10px; color: var(--danger); font-size: 18px; }
+      #startup-error p { margin: 0; color: #d2d0c8; line-height: 1.55; }
+      #startup-error code {
+        display: block;
+        margin-top: 14px;
+        color: var(--muted);
+        font: 12px/1.5 "Cascadia Code", monospace;
+        user-select: all;
+        overflow-wrap: anywhere;
+      }
+
+      body.failed .signal { background: var(--danger); box-shadow: none; animation: none; }
+      body.failed .rail::after { display: none; }
+
+      @keyframes pulse { 50% { opacity: .35; transform: scale(.72); } }
+      @keyframes scan { to { transform: translateX(414%); } }
+
+      @media (prefers-reduced-motion: reduce) {
+        .signal, .rail::after { animation: none; }
+        .rail::after { inset: 0; width: 42%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow"><span class="signal" aria-hidden="true"></span>Local agent runtime</div>
+      <h1>DSH<br>STUDIO</h1>
+      <p id="startup-status" class="status" role="status" aria-live="polite">正在启动官方 DSH Web…</p>
+      <div class="rail" aria-hidden="true"></div>
+      <section id="startup-error" role="alert" aria-live="assertive">
+        <h2>启动失败</h2>
+        <p id="startup-error-message"></p>
+        <code id="startup-log-path"></code>
+      </section>
+    </main>
+    <script>
+      window.showStartupError = (message, logPath) => {
+        document.body.classList.add('failed')
+        document.getElementById('startup-status').textContent = 'DSH host 未能完成启动。'
+        document.getElementById('startup-error-message').textContent = String(message)
+        document.getElementById('startup-log-path').textContent = logPath ? `日志：${logPath}` : ''
+        document.getElementById('startup-error').classList.add('visible')
+      }
+      if (window.__dshStartupError) {
+        window.showStartupError(
+          window.__dshStartupError.message,
+          window.__dshStartupError.logPath,
+        )
+        delete window.__dshStartupError
+      }
+      window.__TAURI__.core.invoke('startup_ui_ready').catch((error) => {
+        window.showStartupError(`启动页握手失败：${error}`, '')
+      })
+    </script>
+  </body>
+</html>

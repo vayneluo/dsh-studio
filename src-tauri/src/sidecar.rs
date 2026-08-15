@@ -1,28 +1,111 @@
-use std::net::TcpStream;
-use std::process::{Child, Command};
+use crate::job::Job;
+use std::ffi::OsString;
+use std::fs::OpenOptions;
+use std::io::{Read, Write};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+use std::os::windows::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
+
+pub(crate) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+pub(crate) const CREATE_SUSPENDED: u32 = 0x0000_0004;
 
 pub struct SidecarHandle {
     child: Child,
+    _job: Job,
 }
 
-/// 启动 node <dsh_bin> web，绑定 loopback，设置 DSH_HOME。
-pub fn spawn(node: &str, dsh_bin: &str, port: u16, dsh_home: &str) -> std::io::Result<SidecarHandle> {
-    let child = Command::new(node)
-        .arg(dsh_bin)
-        .arg("web")
-        .arg("--host").arg("127.0.0.1")
-        .arg("--port").arg(port.to_string())
-        .env("DSH_HOME", dsh_home)
-        .spawn()?;
-    Ok(SidecarHandle { child })
+#[derive(Debug)]
+pub(crate) struct SpawnSpec {
+    program: PathBuf,
+    args: Vec<OsString>,
+    dsh_home: PathBuf,
+    creation_flags: u32,
 }
 
-/// TCP 连接探测：端口开始接受连接即认为就绪。
+pub(crate) fn spawn_spec(node: &Path, dsh_bin: &Path, port: u16, dsh_home: &Path) -> SpawnSpec {
+    SpawnSpec {
+        program: node.to_path_buf(),
+        args: vec![
+            dsh_bin.as_os_str().to_owned(),
+            "web".into(),
+            "--host".into(),
+            "127.0.0.1".into(),
+            "--port".into(),
+            port.to_string().into(),
+        ],
+        dsh_home: dsh_home.to_path_buf(),
+        creation_flags: CREATE_NO_WINDOW | CREATE_SUSPENDED,
+    }
+}
+
+/// Start the official DSH Web profile with output redirected to one append-only log.
+pub fn spawn(
+    node: &Path,
+    dsh_bin: &Path,
+    port: u16,
+    dsh_home: &Path,
+    log_path: &Path,
+) -> std::io::Result<SidecarHandle> {
+    let spec = spawn_spec(node, dsh_bin, port, dsh_home);
+    let stdout = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)?;
+    let stderr = stdout.try_clone()?;
+
+    let mut command = Command::new(spec.program);
+    command
+        .args(spec.args)
+        .env("DSH_HOME", spec.dsh_home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr))
+        .creation_flags(spec.creation_flags);
+    let job = Job::new()?;
+    let mut child = command.spawn()?;
+    if let Err(error) = job.assign_and_resume(&child) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(error);
+    }
+    Ok(SidecarHandle { child, _job: job })
+}
+
+fn probe_http(port: u16, timeout: Duration) -> bool {
+    let address = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port));
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, timeout) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(timeout));
+    let _ = stream.set_write_timeout(Some(timeout));
+    if stream
+        .write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+        .is_err()
+    {
+        return false;
+    }
+
+    let mut response = [0_u8; 64];
+    let Ok(read) = stream.read(&mut response) else {
+        return false;
+    };
+    let Ok(status_line) = std::str::from_utf8(&response[..read]) else {
+        return false;
+    };
+    status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|status| status.parse::<u16>().ok())
+        .is_some_and(|status| (200..400).contains(&status))
+}
+
+/// Wait until the actual Web page responds successfully, not merely until the port binds.
 pub fn wait_ready(port: u16, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     loop {
-        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
+        if probe_http(port, Duration::from_millis(250)) {
             return true;
         }
         if Instant::now() >= deadline {
@@ -33,43 +116,24 @@ pub fn wait_ready(port: u16, timeout: Duration) -> bool {
 }
 
 impl SidecarHandle {
-    /// 终止 sidecar 及其整棵子进程树（agent 会 spawn bash/pwsh/工具子进程）。
-    pub fn kill(self) {
+    /// Terminate the process tree first, then reap the root child handle.
+    pub fn kill(mut self) {
         let pid = self.child.id();
-        let _ = Command::new("taskkill")
+        let mut taskkill = Command::new("taskkill");
+        let tree_killed = taskkill
             .args(["/F", "/T", "/PID", &pid.to_string()])
-            .spawn();
-        let mut child = self.child;
-        let _ = child.kill();
-        let _ = child.wait();
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .is_ok_and(|status| status.success());
+        if !tree_killed {
+            let _ = self.child.kill();
+        }
+        let _ = self.child.wait();
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::wait_ready;
-    use std::net::TcpListener;
-    use std::thread;
-    use std::time::Duration;
-
-    #[test]
-    fn wait_ready_true_when_server_listens() {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let port = listener.local_addr().unwrap().port();
-        let handle = thread::spawn(move || {
-            for _ in 0..100 {
-                if let Ok((_s, _)) = listener.accept() { break }
-            }
-        });
-        assert!(wait_ready(port, Duration::from_secs(2)));
-        handle.join().unwrap();
-    }
-
-    #[test]
-    fn wait_ready_false_when_nothing_listens() {
-        let l = TcpListener::bind("127.0.0.1:0").unwrap();
-        let port = l.local_addr().unwrap().port();
-        drop(l);
-        assert!(!wait_ready(port, Duration::from_millis(300)));
-    }
-}
+mod tests;

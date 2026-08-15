@@ -1,12 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "dsh-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.dsh.studio",
   "build": {
     "frontendDist": "../ui"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       { "label": "main", "title": "dsh-studio", "width": 1280, "height": 800 }
     ],
@@ -18,7 +19,9 @@
     "icon": ["icons/icon.ico"],
     "publisher": "dsh-studio",
     "resources": {
-      "../runtime": "runtime"
+      "../runtime/node/node.exe": "runtime/node/node.exe",
+      "../runtime/host": "runtime/host",
+      "../runtime/profile-seed": "runtime/profile-seed"
     },
     "createUpdaterArtifacts": false,
     "windows": {
