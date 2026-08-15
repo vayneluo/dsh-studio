@@ -2,91 +2,26 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rename the Windows title bar to `DS Studio` and replace the official bilingual home hero headline with the approved DS Studio copy.
+**Goal:** Present one consistent `DS Studio` product identity in the native title, expanded sidebar, home hero, and bilingual first-run onboarding.
 
-**Architecture:** Keep the native label in Tauri configuration and add one focused Rust module for desktop-only DSH page copy. The module gates on the finished loopback DSH page and evaluates an idempotent script that changes only the headline beside the unchanged preview badge.
+**Architecture:** Keep the native title in Tauri configuration and keep all Web UI branding in the focused `interface_copy` module. The sidecar publishes its selected port into app state; only a finished page from that exact loopback origin receives an idempotent DOM script. The script targets stable structural and exact-copy anchors, observes React remounts and locale changes, and never patches bundled `node_modules` or broad-matches technical DeepSeek/DSH terms.
 
-**Tech Stack:** Rust 2021, Tauri 2.11, WebView JavaScript, JSON configuration, Cargo tests
+**Tech Stack:** Rust 2021, Tauri 2.11, WebView JavaScript, JSON configuration, Cargo tests, Node test runner
 
 ---
 
-### Task 1: Rename the native window title
+### Task 1: Extend the interface-copy contract tests
 
 **Files:**
-- Modify: `src-tauri/src/lib.rs`
-- Modify: `src-tauri/tauri.conf.json`
+- Modify: `src-tauri/src/interface_copy.rs`
 
-- [ ] **Step 1: Write a failing configuration test**
+- [ ] **Step 1: Replace the old narrow script test with failing branding tests**
 
-Add this test inside `src-tauri/src/lib.rs`'s existing `app_tests` module:
+Keep the existing exact-origin URL test and replace `script_replaces_only_the_bilingual_preview_headline` with:
 
 ```rust
     #[test]
-    fn main_window_uses_the_ds_studio_title() {
-        let config: serde_json::Value =
-            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
-        assert_eq!(config["app"]["windows"][0]["title"], "DS Studio");
-    }
-```
-
-- [ ] **Step 2: Run the focused test and verify it fails**
-
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-wordmark-target app_tests::main_window_uses_the_ds_studio_title -- --nocapture`
-
-Expected: FAIL because the configured title is `dsh-studio`.
-
-- [ ] **Step 3: Change only the main window title**
-
-In `src-tauri/tauri.conf.json`, change:
-
-```json
-{ "label": "main", "title": "DS Studio", "width": 1280, "height": 800 }
-```
-
-Do not change `productName`, `identifier`, `publisher`, bundle icons, or executable metadata.
-
-- [ ] **Step 4: Run the focused test and verify it passes**
-
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-wordmark-target app_tests::main_window_uses_the_ds_studio_title -- --nocapture`
-
-Expected: one focused test passes.
-
-### Task 2: Replace the bilingual home headline
-
-**Files:**
-- Create: `src-tauri/src/interface_copy.rs`
-- Modify: `src-tauri/src/lib.rs`
-
-- [ ] **Step 1: Register the module and write failing behavior tests**
-
-Add `mod interface_copy;` with the module declarations in `src-tauri/src/lib.rs`. Create `src-tauri/src/interface_copy.rs` with tests for the intended private API:
-
-```rust
-#[cfg(test)]
-mod tests {
-    use super::{is_dsh_web_url, INTERFACE_COPY_SCRIPT};
-
-    #[test]
-    fn copy_runs_only_for_the_loopback_dsh_server() {
-        assert!(is_dsh_web_url(
-            &tauri::Url::parse("http://127.0.0.1:43123/").unwrap()
-        ));
-        assert!(!is_dsh_web_url(
-            &tauri::Url::parse("tauri://localhost/").unwrap()
-        ));
-        assert!(!is_dsh_web_url(
-            &tauri::Url::parse("https://127.0.0.1:43123/").unwrap()
-        ));
-        assert!(!is_dsh_web_url(
-            &tauri::Url::parse("http://localhost:43123/").unwrap()
-        ));
-        assert!(!is_dsh_web_url(
-            &tauri::Url::parse("http://127.0.0.1/").unwrap()
-        ));
-    }
-
-    #[test]
-    fn script_replaces_only_the_bilingual_preview_headline() {
+    fn script_unifies_the_requested_bilingual_branding() {
         for expected in [
             "探索未至之境",
             "与 DS Studio 一起，探索未至之境",
@@ -94,144 +29,237 @@ mod tests {
             "Explore the unknown with DS Studio",
             "预览版",
             "Preview",
+            "0 0 182 24",
+            "data-ds-studio-wordmark",
+            "DS Studio",
+            "欢迎使用 DS Studio",
+            "Welcome to DS Studio",
+            "DS Studio 目前处于预览阶段",
+            "DS Studio is currently in preview",
+            "为 DS Studio 配置 DeepSeek 官方模型，即可开始使用。",
+            "Configure the official DeepSeek provider for DS Studio to get started.",
             "__DS_STUDIO_COPY_OBSERVER__",
             "MutationObserver",
         ] {
-            assert!(INTERFACE_COPY_SCRIPT.contains(expected), "missing {expected}");
-        }
-        assert!(!INTERFACE_COPY_SCRIPT.contains("welcomeTitle"));
-        assert!(!INTERFACE_COPY_SCRIPT.contains("BrandWordmark"));
-    }
-}
-```
-
-- [ ] **Step 2: Run the focused tests and verify they fail**
-
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-wordmark-target interface_copy::tests -- --nocapture`
-
-Expected: compilation fails because `is_dsh_web_url` and `INTERFACE_COPY_SCRIPT` do not exist.
-
-- [ ] **Step 3: Implement the gated idempotent headline script**
-
-Above the tests in `src-tauri/src/interface_copy.rs`, implement:
-
-```rust
-use tauri::{
-    webview::{PageLoadEvent, PageLoadPayload},
-    Runtime, Webview,
-};
-
-const INTERFACE_COPY_SCRIPT: &str = r#"
-(() => {
-  const replacements = new Map([
-    ['探索未至之境', '与 DS Studio 一起，探索未至之境'],
-    ['Into the Unknown', 'Explore the unknown with DS Studio'],
-  ]);
-  const previewLabels = new Set(['预览版', 'Preview']);
-
-  const applyCopy = () => {
-    for (const headline of document.querySelectorAll('span')) {
-      const source = headline.textContent?.trim();
-      const replacement = replacements.get(source);
-      if (!replacement || !headline.parentElement) continue;
-      const siblingLabels = [...headline.parentElement.children]
-        .map((element) => element.textContent?.trim());
-      if (!siblingLabels.some((label) => previewLabels.has(label))) continue;
-      headline.textContent = replacement;
-    }
-  };
-
-  applyCopy();
-  if (!window.__DS_STUDIO_COPY_OBSERVER__) {
-    window.__DS_STUDIO_COPY_OBSERVER__ = new MutationObserver(applyCopy);
-    window.__DS_STUDIO_COPY_OBSERVER__.observe(document.documentElement, {
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
-  }
-})();
-"#;
-
-fn is_dsh_web_url(url: &tauri::Url) -> bool {
-    url.scheme() == "http" && url.host_str() == Some("127.0.0.1") && url.port().is_some()
-}
-
-pub(crate) fn handle_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
-    if matches!(payload.event(), PageLoadEvent::Finished) && is_dsh_web_url(payload.url()) {
-        if let Err(error) = webview.eval(INTERFACE_COPY_SCRIPT) {
-            eprintln!("failed to install DS Studio interface copy: {error}");
+            assert!(
+                INTERFACE_COPY_SCRIPT.contains(expected),
+                "missing {expected}"
+            );
         }
     }
-}
+
+    #[test]
+    fn script_removes_only_the_hero_preview_badge_and_preserves_internal_names() {
+        assert!(INTERFACE_COPY_SCRIPT.contains("badge.remove()"));
+        assert!(INTERFACE_COPY_SCRIPT.contains("data-ds-studio-hero"));
+        assert!(!INTERFACE_COPY_SCRIPT.contains("querySelectorAll('*')"));
+        assert!(!INTERFACE_COPY_SCRIPT.contains("replaceAll('DeepSeek'"));
+        assert!(!INTERFACE_COPY_SCRIPT.contains("replaceAll('DSH'"));
+    }
 ```
 
-- [ ] **Step 4: Run the focused tests and verify they pass**
+- [ ] **Step 2: Run the focused tests and verify RED**
 
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-wordmark-target interface_copy::tests -- --nocapture`
-
-Expected: both interface-copy tests pass.
-
-- [ ] **Step 5: Register the finished-page callback**
-
-In `src-tauri/src/lib.rs`, add:
-
-```rust
-        .invoke_handler(tauri::generate_handler![startup_ui_ready])
-        .on_page_load(interface_copy::handle_page_load)
-        .setup(|app| {
-```
-
-- [ ] **Step 6: Run formatting and the complete Rust suite**
-
-Run: `cargo fmt --manifest-path src-tauri/Cargo.toml`
-
-Run: `cargo test --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-wordmark-target -- --nocapture`
-
-Expected: all tests pass, including the three new tests.
-
-- [ ] **Step 7: Commit the implementation**
+Run:
 
 ```powershell
-git add -- src-tauri/tauri.conf.json src-tauri/src/interface_copy.rs src-tauri/src/lib.rs
-git commit -m "feat: unify DS Studio interface copy"
+cargo test --manifest-path src-tauri/Cargo.toml interface_copy::tests -- --nocapture
 ```
 
-### Task 3: Verify desktop behavior and unchanged assets
+Expected: the exact-origin test passes, while the two new script-contract tests fail because the current script does not contain the sidebar, onboarding, or badge-removal behavior.
+
+### Task 2: Implement precise, idempotent DS Studio branding
+
+**Files:**
+- Modify: `src-tauri/src/interface_copy.rs`
+
+- [ ] **Step 1: Add exact bilingual copy maps and stable element markers**
+
+Inside `INTERFACE_COPY_SCRIPT`, define the exact hero and onboarding transformations:
+
+```javascript
+const headlineReplacements = new Map([
+  ['探索未至之境', '与 DS Studio 一起，探索未至之境'],
+  ['Into the Unknown', 'Explore the unknown with DS Studio'],
+]);
+const brandedHeadlines = new Set(headlineReplacements.values());
+const previewLabels = new Set(['预览版', 'Preview']);
+const normalize = (value) => value?.replace(/\s+/g, ' ').trim();
+const copyReplacements = new Map([
+  ['内测声明', '欢迎使用 DS Studio'],
+  ['Internal Testing Notice', 'Welcome to DS Studio'],
+  [
+    normalize('DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。\n\n我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。'),
+    'DS Studio 目前处于预览阶段，产品体验和基础能力会持续改进，欢迎反馈建议。\n\n我们期待与你一起，在开放、可复用、可组合的基础设施之上，共同探索智能上限。',
+  ],
+  [
+    normalize("DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem."),
+    'DS Studio is currently in preview. The product experience and foundational capabilities will continue to improve, and we welcome your feedback.\n\nWe look forward to exploring the limits of intelligence with you on open, reusable, and composable infrastructure.',
+  ],
+  ['配置 DeepSeek 官方模型，即可开始使用。', '为 DS Studio 配置 DeepSeek 官方模型，即可开始使用。'],
+  ['Configure the official DeepSeek provider to start building.', 'Configure the official DeepSeek provider for DS Studio to get started.'],
+]);
+```
+
+- [ ] **Step 2: Replace only the expanded official wordmark with visible text**
+
+Use the official wordmark's stable SVG view box rather than hashed CSS classes. Preserve the existing parent button so click, focus, and accessible behavior remain owned by the sidebar:
+
+```javascript
+const replaceWordmarks = (root) => {
+  const selector = 'svg[viewBox="0 0 182 24"][aria-hidden="true"]';
+  const wordmarks = root.matches?.(selector)
+    ? [root]
+    : [...root.querySelectorAll?.(selector) ?? []];
+  for (const wordmark of wordmarks) {
+    if (wordmark.parentElement?.tagName !== 'BUTTON') continue;
+    const label = document.createElement('span');
+    label.setAttribute('data-ds-studio-wordmark', '');
+    label.textContent = 'DS Studio';
+    Object.assign(label.style, {
+      color: 'inherit',
+      fontSize: '22px',
+      fontWeight: '700',
+      letterSpacing: '-0.02em',
+      lineHeight: '1',
+      whiteSpace: 'nowrap',
+    });
+    wordmark.replaceWith(label);
+  }
+};
+```
+
+- [ ] **Step 3: Brand the hero and remove only its direct preview sibling**
+
+Mark a confirmed hero so a later locale text mutation remains scoped even after its badge has been removed:
+
+```javascript
+const replaceHeadline = (headline) => {
+  if (!(headline instanceof HTMLSpanElement) || !headline.parentElement) return;
+  const source = headline.textContent?.trim();
+  const badges = [...headline.parentElement.children].filter((element) =>
+    element !== headline && previewLabels.has(element.textContent?.trim())
+  );
+  const marked = headline.hasAttribute('data-ds-studio-hero');
+  if (!marked && badges.length === 0) return;
+  const replacement = headlineReplacements.get(source);
+  if (!replacement && !brandedHeadlines.has(source)) return;
+  headline.setAttribute('data-ds-studio-hero', '');
+  if (replacement) headline.textContent = replacement;
+  for (const badge of badges) badge.remove();
+};
+```
+
+- [ ] **Step 4: Replace only exact leaf onboarding copy**
+
+```javascript
+const replaceProductCopy = (element) => {
+  if (!(element instanceof HTMLElement) || element.childElementCount !== 0) return;
+  const replacement = copyReplacements.get(normalize(element.textContent));
+  if (replacement && element.textContent !== replacement) element.textContent = replacement;
+};
+```
+
+- [ ] **Step 5: Apply transformations initially and after React mutations**
+
+Update `applyWithin` to call all three transformations over the smallest relevant selector sets. Keep the single global observer marker and observe only `childList`, `characterData`, and `subtree`; do not observe attributes.
+
+```javascript
+const applyWithin = (root) => {
+  if (!(root instanceof Element)) return;
+  replaceWordmarks(root);
+  if (root.matches('span')) replaceHeadline(root);
+  for (const headline of root.querySelectorAll('span')) replaceHeadline(headline);
+  if (root.matches('h1,h2,h3,p,div,span')) replaceProductCopy(root);
+  for (const element of root.querySelectorAll('h1,h2,h3,p,div,span')) {
+    replaceProductCopy(element);
+  }
+};
+```
+
+For `characterData` mutations, call `applyWithin(mutation.target.parentElement)`. For child additions, call it for the added element or its parent. This handles initial load, onboarding steps, React remounts, and locale changes without duplicating text or observers.
+
+- [ ] **Step 6: Run focused tests and verify GREEN**
+
+Run:
+
+```powershell
+cargo fmt --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml interface_copy::tests -- --nocapture
+```
+
+Expected: all interface-copy tests pass.
+
+### Task 3: Keep script execution on the exact sidecar origin
+
+**Files:**
+- Modify: `src-tauri/src/lib.rs`
+- Verify: `src-tauri/src/interface_copy.rs`
+
+- [ ] **Step 1: Verify the exact-port regression test covers missing and mismatched ports**
+
+The URL test must accept only `http://127.0.0.1:<published-port>/` and reject a mismatched port, `None`, default HTTP port, HTTPS, `localhost`, and `tauri://localhost`.
+
+- [ ] **Step 2: Publish and clear the sidecar port in app state**
+
+Use `AtomicU16 web_port` in `SidecarState`. Publish the selected port only after the sidecar is ready, pass `(port != 0).then_some(port)` into `interface_copy::handle_page_load`, and clear it when the sidecar is taken or navigation fails.
+
+- [ ] **Step 3: Run the complete Rust and Node suites**
+
+Run:
+
+```powershell
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo test --manifest-path src-tauri/Cargo.toml
+node --test scripts\*.test.mjs
+```
+
+Expected: 35 or more Rust tests pass, all 21 Node tests pass, and formatting reports no diff.
+
+### Task 4: Verify the real desktop UI and unchanged assets
 
 **Files:**
 - Verify only: `src-tauri/icons/icon.png`
 - Verify only: `src-tauri/icons/icon.ico`
 
-- [ ] **Step 1: Run repository checks and build**
+- [ ] **Step 1: Build an isolated verification binary**
 
-Run: `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`
-
-Run: `git diff --check HEAD~1..HEAD`
-
-Run: `cargo build --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-wordmark-target`
-
-Expected: every command succeeds.
-
-- [ ] **Step 2: Launch an isolated verification instance**
-
-Run with a temporary target directory and verification-only application identifier so the user's open app and data directory remain untouched:
+Run:
 
 ```powershell
-$env:CARGO_TARGET_DIR = 'C:\Temp\dsh-studio-wordmark-target'
-cargo tauri dev --config '{"identifier":"com.dsh.studio.codex-copy-check-20260815"}'
+cargo build --manifest-path src-tauri/Cargo.toml --target-dir C:\Temp\dsh-studio-brand-target
 ```
 
-Verify the title bar reads `DS Studio`; the hero reads `与 DS Studio 一起，探索未至之境`; the fish and `预览版` badge are unchanged; switching to English produces `Explore the unknown with DS Studio` and keeps `Preview` unchanged.
+Expected: build exits with code 0; the existing Windows linker stdout warning is allowed.
 
-- [ ] **Step 3: Confirm icon resources are unchanged**
+- [ ] **Step 2: Launch with an isolated identifier and first-run data**
 
-Run: `git diff HEAD~1..HEAD -- src-tauri/icons`
+Run a verification-only instance with a temporary Tauri identifier and data directory so the user's current app and profile are untouched.
+
+Verify:
+
+- title bar is `DS Studio`;
+- expanded sidebar shows only the prominent plain text `DS Studio`;
+- first-run welcome title/body use DS Studio in Chinese and English;
+- API-key onboarding description names DS Studio while keeping DeepSeek as the provider;
+- hero copy is branded and `预览版` / `Preview` is absent;
+- the home fish, collapsed-sidebar fish control, inputs, focus, and click behavior still work.
+
+- [ ] **Step 3: Confirm icon resources and bundled packages are unchanged**
+
+Run:
+
+```powershell
+git diff -- src-tauri/icons runtime/host/node_modules runtime/profile-seed
+```
 
 Expected: no output.
 
-- [ ] **Step 4: Record final repository state**
+- [ ] **Step 4: Commit only the scoped implementation and documentation**
 
-Run: `git status --short`
+```powershell
+git add -- src-tauri/src/interface_copy.rs src-tauri/src/lib.rs docs/superpowers/plans/2026-08-15-ds-studio-interface-copy.md
+git commit -m "feat: unify DS Studio branding"
+```
 
-Expected: no uncommitted implementation changes remain.
+Do not add `.superpowers/` or the independent provider-neutral onboarding plan.
