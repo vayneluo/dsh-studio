@@ -1,6 +1,7 @@
 use super::migrate_legacy_web_profile;
 use serde_json::{json, Value};
 use std::fs;
+use std::os::windows::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -156,4 +157,89 @@ fn invalid_json_returns_an_error_without_overwriting_the_manifest() {
         fs::read_to_string(home.manifest_path()).unwrap(),
         "{ definitely not json"
     );
+}
+
+#[test]
+fn recovers_an_interrupted_manifest_backup_before_migrating() {
+    let home = TestHome::new();
+    let backup = home.manifest_path().with_extension("json.4242.backup");
+    fs::write(
+        &backup,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&bundled_manifest(None)).unwrap()
+        ),
+    )
+    .unwrap();
+
+    let migration = migrate_legacy_web_profile(home.path()).unwrap();
+
+    assert!(migration.changed);
+    assert!(home.manifest_path().exists());
+    assert!(!backup.exists());
+    assert_eq!(home.read_manifest()["dependencies"], json!({}));
+}
+
+#[test]
+fn a_fresh_home_without_a_web_profile_needs_no_migration() {
+    let home = TestHome::new();
+    fs::remove_dir_all(home.path().join("profiles")).unwrap();
+
+    let migration = migrate_legacy_web_profile(home.path()).unwrap();
+
+    assert!(!migration.changed);
+    assert!(!migration.cleared_bundled_cache);
+}
+
+#[test]
+fn preserves_unknown_user_created_manifest_backups() {
+    let home = TestHome::new();
+    home.write_manifest(&json!({ "dependencies": {} }));
+    let manual = home.manifest_path().with_extension("json.manual.backup");
+    fs::write(&manual, "user backup").unwrap();
+
+    migrate_legacy_web_profile(home.path()).unwrap();
+
+    assert_eq!(fs::read_to_string(manual).unwrap(), "user backup");
+}
+
+#[test]
+fn restores_a_valid_owned_backup_when_the_live_manifest_is_corrupt() {
+    let home = TestHome::new();
+    fs::write(home.manifest_path(), "{ corrupt live json").unwrap();
+    let backup = home.manifest_path().with_extension("json.migration.backup");
+    fs::write(
+        &backup,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&bundled_manifest(None)).unwrap()
+        ),
+    )
+    .unwrap();
+
+    let migration = migrate_legacy_web_profile(home.path()).unwrap();
+
+    assert!(migration.changed);
+    assert!(!backup.exists());
+    assert_eq!(home.read_manifest()["dependencies"], json!({}));
+}
+
+#[test]
+fn cache_cleanup_failure_does_not_abort_a_committed_migration() {
+    let home = TestHome::new();
+    home.write_manifest(&bundled_manifest(None));
+    let locked_path = home.path().join("profiles/web/node_modules/locked.js");
+    fs::create_dir_all(locked_path.parent().unwrap()).unwrap();
+    fs::write(&locked_path, "locked").unwrap();
+    let _lock = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&locked_path)
+        .unwrap();
+
+    let migration = migrate_legacy_web_profile(home.path()).unwrap();
+
+    assert!(migration.changed);
+    assert!(migration.cleared_bundled_cache);
+    assert_eq!(home.read_manifest()["dependencies"], json!({}));
 }

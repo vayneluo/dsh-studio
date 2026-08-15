@@ -140,6 +140,16 @@
         document.getElementById('startup-log-path').textContent = logPath ? `日志：${logPath}` : ''
         document.getElementById('startup-error').classList.add('visible')
       }
+      if (window.__dshStartupError) {
+        window.showStartupError(
+          window.__dshStartupError.message,
+          window.__dshStartupError.logPath,
+        )
+        delete window.__dshStartupError
+      }
+      window.__TAURI__.core.invoke('startup_ui_ready').catch((error) => {
+        window.showStartupError(`启动页握手失败：${error}`, '')
+      })
     </script>
   </body>
 </html>

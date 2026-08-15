@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
-import { auditRuntime, pruneRuntime } from './runtime-policy.mjs'
+import { auditRuntime, pruneRuntime, replaceRuntime } from './runtime-policy.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = join(scriptsDir, '..')
@@ -76,13 +76,43 @@ test('auditRuntime enforces the expanded runtime byte budget', (t) => {
   )
 })
 
+test('replaceRuntime swaps in a clean staging tree without stale files', (t) => {
+  const root = makeFixture()
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const runtime = join(root, 'runtime')
+  const staging = join(root, '.runtime-stage-test')
+  writeFixture(runtime, 'host/stale-package/package.json', '{}')
+  writeFixture(staging, 'host/node_modules/@deepseek-ai/dsh/package.json', '{}')
+  writeFixture(staging, 'node/node.exe', 'node')
+
+  replaceRuntime(staging, runtime)
+
+  assert.equal(readFileSync(join(runtime, 'node/node.exe'), 'utf8'), 'node')
+  assert.equal(readFileSync(join(runtime, 'host/node_modules/@deepseek-ai/dsh/package.json'), 'utf8'), '{}')
+  assert.throws(() => readFileSync(join(runtime, 'host/stale-package/package.json')), /ENOENT/)
+  assert.throws(() => readFileSync(join(staging, 'node/node.exe')), /ENOENT/)
+})
+
 test('bundle host builds only the official DSH runtime', () => {
   const source = readFileSync(join(scriptsDir, 'bundle-host.mjs'), 'utf8')
 
   assert.doesNotMatch(source, /@linxin666|dsh-web-ui|dsh-skins/)
   assert.doesNotMatch(source, /\bpnpm\b|plugin.*add|runtime[\\/]['"]?home/i)
   assert.match(source, /pruneRuntime\(host\)/)
-  assert.match(source, /auditRuntime\(runtime\)/)
+  assert.match(source, /auditRuntime\(staging\)/)
+  assert.match(source, /replaceRuntime\(staging, runtime\)/)
+  assert.doesNotMatch(source, /run\(['"]unzip['"]/, 'Windows builds must not require an external unzip executable')
+  assert.match(source, /Expand-Archive/)
+  assert.match(source, /DSH_NODE_ZIP/)
+  assert.match(source, /DSH_NODE_DIR/)
+  assert.doesNotMatch(source, /run\(['"]npm['"]/, 'runtime builds must not require a global npm executable')
+  assert.match(source, /npm-cli\.js/)
+  assert.match(source, /https:\/\/registry\.npmjs\.org\//)
+  assert.match(source, /--@deepseek-ai:registry=https:\/\/registry\.npmjs\.org\//)
+  assert.match(source, /NPM_CONFIG_USERCONFIG/)
+  assert.match(source, /npmEnv\[pathKey\][^\n]*dirname\(node\)/)
+  assert.match(source, /rmSync\(userConfig/)
+  assert.match(source, /rmSync\(globalConfig/)
 })
 
 test('startup page exposes a text-only error state', () => {
@@ -90,6 +120,8 @@ test('startup page exposes a text-only error state', () => {
 
   assert.match(source, /id=["']startup-error["']/)
   assert.match(source, /window\.showStartupError/)
+  assert.match(source, /__dshStartupError/)
+  assert.match(source, /startup_ui_ready/)
   assert.match(source, /textContent/)
   assert.doesNotMatch(source, /innerHTML/)
 })
@@ -103,4 +135,5 @@ test('Tauri bundles only the Node executable and official DSH host', () => {
     '../runtime/node/node.exe': 'runtime/node/node.exe',
     '../runtime/host': 'runtime/host',
   })
+  assert.equal(config.app.withGlobalTauri, true)
 })

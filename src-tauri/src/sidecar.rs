@@ -9,6 +9,7 @@ use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub(crate) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+pub(crate) const CREATE_SUSPENDED: u32 = 0x0000_0004;
 
 pub struct SidecarHandle {
     child: Child,
@@ -35,7 +36,7 @@ pub(crate) fn spawn_spec(node: &Path, dsh_bin: &Path, port: u16, dsh_home: &Path
             port.to_string().into(),
         ],
         dsh_home: dsh_home.to_path_buf(),
-        creation_flags: CREATE_NO_WINDOW,
+        creation_flags: CREATE_NO_WINDOW | CREATE_SUSPENDED,
     }
 }
 
@@ -64,7 +65,7 @@ pub fn spawn(
         .creation_flags(spec.creation_flags);
     let job = Job::new()?;
     let mut child = command.spawn()?;
-    if let Err(error) = job.assign(&child) {
+    if let Err(error) = job.assign_and_resume(&child) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(error);

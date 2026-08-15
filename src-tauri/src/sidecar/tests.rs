@@ -1,4 +1,4 @@
-use super::{spawn_spec, wait_ready, CREATE_NO_WINDOW};
+use super::{spawn_spec, wait_ready, CREATE_NO_WINDOW, CREATE_SUSPENDED};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::Path;
@@ -62,7 +62,11 @@ fn spawn_spec_is_hidden_and_targets_the_official_web_profile() {
         Path::new("C:/Users/test/AppData/dsh-studio"),
     );
 
-    assert_eq!(spec.creation_flags, CREATE_NO_WINDOW);
+    assert_eq!(
+        spec.creation_flags,
+        CREATE_NO_WINDOW | CREATE_SUSPENDED,
+        "the sidecar must remain suspended until it belongs to the kill-on-close Job"
+    );
     assert_eq!(spec.args[0], "C:/app/runtime/host/dsh/lib/bin.js");
     assert_eq!(
         &spec.args[1..],

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-const DSH_BIN: &str = "host/node_modules/@deepseek-ai/dsh/lib/bin.js";
+pub const DSH_BIN: &str = "host/node_modules/@deepseek-ai/dsh/lib/bin.js";
 
 fn is_complete_runtime(runtime: &Path) -> bool {
     runtime.join("node/node.exe").is_file() && runtime.join(DSH_BIN).is_file()

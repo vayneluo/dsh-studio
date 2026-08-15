@@ -1,4 +1,4 @@
-import { lstatSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { basename, join, normalize } from 'node:path'
 
 export const DEFAULT_RUNTIME_BUDGET_BYTES = 230 * 1024 * 1024
@@ -98,6 +98,36 @@ export const pruneRuntime = (hostDir) => {
   }
 
   return { removedFiles, removedBytes }
+}
+
+export const replaceRuntime = (stagingDir, runtimeDir) => {
+  const backupDir = `${runtimeDir}.backup`
+
+  // Recover a swap interrupted between moving the previous runtime aside and
+  // publishing the freshly built staging tree.
+  if (existsSync(backupDir)) {
+    if (existsSync(runtimeDir)) {
+      rmSync(backupDir, { recursive: true, force: true })
+    } else {
+      renameSync(backupDir, runtimeDir)
+    }
+  }
+
+  let previousRuntimeMoved = false
+  try {
+    if (existsSync(runtimeDir)) {
+      renameSync(runtimeDir, backupDir)
+      previousRuntimeMoved = true
+    }
+    renameSync(stagingDir, runtimeDir)
+  } catch (error) {
+    if (!existsSync(runtimeDir) && previousRuntimeMoved && existsSync(backupDir)) {
+      renameSync(backupDir, runtimeDir)
+    }
+    throw error
+  }
+
+  rmSync(backupDir, { recursive: true, force: true })
 }
 
 export const auditRuntime = (
