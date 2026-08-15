@@ -2,11 +2,14 @@
 
 ## Goal
 
-Present one consistent `DS Studio` product identity across the Windows title bar, expanded sidebar, home hero, and first-run onboarding while preserving provider names, application behavior, and the existing desktop icon.
+Present one consistent `DS Studio` product identity across the Windows title bar, native startup page, expanded sidebar, home hero, and first-run onboarding while preserving provider names, application behavior, and the existing desktop icon.
 
 ## Confirmed Copy
 
 - Windows title bar: `DS Studio`
+- Startup heading: `DS STUDIO`
+- Startup status: `正在启动 DS Studio…`
+- Startup failure status: `DS Studio 未能完成启动。`
 - Expanded sidebar wordmark: plain text `DS Studio`
 - Chinese home hero headline: `与 DS Studio 一起，探索未至之境`
 - English home hero headline: `Explore the unknown with DS Studio`
@@ -24,11 +27,13 @@ The first-run welcome body uses concise DS Studio product copy instead of descri
 
 The Windows title bar is owned by the Tauri window configuration. Change only the main window's `title`; do not rename the executable, package identifier, product metadata, publisher, or icon resources.
 
+The native loading guide is owned by `ui/index.html`. Replace its visible `DSH STUDIO` heading and DSH Web status strings with the confirmed DS Studio copy while preserving the existing loading/error behavior, accessibility live regions, layout, and motion.
+
 The visible Web UI labels are owned by official DSH client packages. The desktop shell will apply one small, idempotent page-load script after the exact loopback origin selected for the running DSH sidecar loads. It will:
 
 - replace the expanded sidebar's `BrandWordmark` presentation with a styled text node while preserving the existing new-session button and its accessible behavior;
 - replace only the exact official hero strings (`探索未至之境` and `Into the Unknown`) and remove only their sibling preview badge;
-- replace the exact bilingual first-run welcome title and body strings with DS Studio copy;
+- replace the exact bilingual first-run welcome title and body strings with DS Studio copy, scoped to the onboarding dialog so matching conversation content remains untouched;
 - update the exact API-key onboarding description so DeepSeek remains clearly identified as a provider rather than the product name.
 
 A mutation observer will reapply these changes when React remounts a target or the user switches locale.
@@ -46,9 +51,9 @@ The script must not patch `node_modules`, seeded profiles, settings data, model-
 
 ## Verification
 
-- Unit-test the title configuration and the page script's URL gate, exact sidebar/hero/onboarding targets, bilingual source and replacement strings, preview removal, and idempotency marker.
+- Unit-test the title configuration, startup-page product copy, and page script's URL gate, exact sidebar/hero/onboarding targets, dialog boundary, locale-change handling, bilingual source and replacement strings, preview removal, and idempotency marker.
 - Run the complete Rust and repository test suites.
-- Build and launch the desktop app with isolated first-run data to verify the title bar, pure-text expanded sidebar, first-run dialogs, hero copy, absent preview badge, locale switching, preserved interactions, and unchanged desktop icon resources.
+- Build and launch the desktop app with isolated first-run data to verify the title bar, native startup guide, pure-text expanded sidebar, first-run dialogs, hero copy, absent preview badge, locale switching, preserved interactions, and unchanged desktop icon resources.
 
 ## Out of Scope
 

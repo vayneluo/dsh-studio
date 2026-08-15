@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>dsh-studio</title>
+    <title>DS Studio</title>
     <style>
       :root {
         color-scheme: dark;
@@ -123,8 +123,8 @@
   <body>
     <main>
       <div class="eyebrow"><span class="signal" aria-hidden="true"></span>Local agent runtime</div>
-      <h1>DSH<br>STUDIO</h1>
-      <p id="startup-status" class="status" role="status" aria-live="polite">正在启动官方 DSH Web…</p>
+      <h1>DS<br>STUDIO</h1>
+      <p id="startup-status" class="status" role="status" aria-live="polite">正在启动 DS Studio…</p>
       <div class="rail" aria-hidden="true"></div>
       <section id="startup-error" role="alert" aria-live="assertive">
         <h2>启动失败</h2>
@@ -135,7 +135,7 @@
     <script>
       window.showStartupError = (message, logPath) => {
         document.body.classList.add('failed')
-        document.getElementById('startup-status').textContent = 'DSH host 未能完成启动。'
+        document.getElementById('startup-status').textContent = 'DS Studio 未能完成启动。'
         document.getElementById('startup-error-message').textContent = String(message)
         document.getElementById('startup-log-path').textContent = logPath ? `日志：${logPath}` : ''
         document.getElementById('startup-error').classList.add('visible')

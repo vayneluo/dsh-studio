@@ -7,7 +7,7 @@ mod runtime;
 mod sidecar;
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -18,6 +18,7 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(90);
 struct SidecarState {
     handle: Mutex<Option<sidecar::SidecarHandle>>,
     exiting: AtomicBool,
+    web_port: AtomicU16,
 }
 
 struct StartupUiState(AtomicBool);
@@ -102,6 +103,7 @@ fn show_startup_error<R: Runtime>(
 fn take_sidecar<R: Runtime>(app_handle: &tauri::AppHandle<R>) -> Option<sidecar::SidecarHandle> {
     let state = app_handle.try_state::<SidecarState>()?;
     let handle = state.handle.lock().ok()?.take();
+    state.web_port.store(0, Ordering::Release);
     handle
 }
 
@@ -157,12 +159,16 @@ fn start_sidecar<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<(), String> {
         return Err("DSH host did not become ready within 90 seconds.".to_string());
     }
 
+    state.web_port.store(port, Ordering::Release);
     let url = tauri::Url::parse(&format!("http://127.0.0.1:{port}/"))
         .map_err(|_| "DSH host returned an invalid URL".to_string())?;
     let navigation = app
         .get_webview_window("main")
         .map(|window| window.navigate(url));
-    require_navigation(navigation)?;
+    if let Err(error) = require_navigation(navigation) {
+        state.web_port.store(0, Ordering::Release);
+        return Err(error);
+    }
     Ok(())
 }
 
@@ -171,10 +177,17 @@ pub fn run() {
         .manage(SidecarState {
             handle: Mutex::new(None),
             exiting: AtomicBool::new(false),
+            web_port: AtomicU16::new(0),
         })
         .manage(StartupUiState(AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![startup_ui_ready])
-        .on_page_load(interface_copy::handle_page_load)
+        .on_page_load(|webview, payload| {
+            let port = webview
+                .state::<SidecarState>()
+                .web_port
+                .load(Ordering::Acquire);
+            interface_copy::handle_page_load(webview, payload, (port != 0).then_some(port));
+        })
         .setup(|app| {
             let app_handle = app.handle().clone();
             spawn_background(move || {

@@ -2,15 +2,43 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Present one consistent `DS Studio` product identity in the native title, expanded sidebar, home hero, and bilingual first-run onboarding.
+**Goal:** Present one consistent `DS Studio` product identity in the native title, startup guide, expanded sidebar, home hero, and bilingual first-run onboarding.
 
-**Architecture:** Keep the native title in Tauri configuration and keep all Web UI branding in the focused `interface_copy` module. The sidecar publishes its selected port into app state; only a finished page from that exact loopback origin receives an idempotent DOM script. The script targets stable structural and exact-copy anchors, observes React remounts and locale changes, and never patches bundled `node_modules` or broad-matches technical DeepSeek/DSH terms.
+**Architecture:** Keep the native title in Tauri configuration, keep the startup-guide copy in the repository-owned static HTML, and keep loaded Web UI branding in the focused `interface_copy` module. The sidecar publishes its selected port into app state; only a finished page from that exact loopback origin receives an idempotent DOM script. The script targets stable structural and exact-copy anchors, observes React remounts and locale changes, and never patches bundled `node_modules` or broad-matches technical DeepSeek/DSH terms.
 
 **Tech Stack:** Rust 2021, Tauri 2.11, WebView JavaScript, JSON configuration, Cargo tests, Node test runner
 
 ---
 
-### Task 1: Extend the interface-copy contract tests
+### Task 1: Unify the native startup guide
+
+**Files:**
+- Modify: `scripts/runtime-policy.test.mjs`
+- Modify: `ui/index.html`
+
+- [ ] **Step 1: Write a failing startup-copy test**
+
+Add a Node test that requires `<title>DS Studio</title>`, `<h1>DS<br>STUDIO</h1>`, `正在启动 DS Studio…`, and `DS Studio 未能完成启动。`, while rejecting the old visible `DSH STUDIO` and DSH Web startup strings.
+
+- [ ] **Step 2: Run the focused test and verify RED**
+
+Run:
+
+```powershell
+node --test --test-name-pattern="startup page uses DS Studio product copy" scripts\runtime-policy.test.mjs
+```
+
+Expected: FAIL because the existing HTML still contains `dsh-studio`, `DSH STUDIO`, and `正在启动官方 DSH Web…`.
+
+- [ ] **Step 3: Replace only visible startup product copy**
+
+In `ui/index.html`, set the document title to `DS Studio`, the two-line heading to `DS<br>STUDIO`, the loading status to `正在启动 DS Studio…`, and the failure status to `DS Studio 未能完成启动。`. Preserve the existing error content insertion via `textContent`.
+
+- [ ] **Step 4: Run the focused test and verify GREEN**
+
+Run the same command and expect one passing test.
+
+### Task 2: Extend the interface-copy contract tests
 
 **Files:**
 - Modify: `src-tauri/src/interface_copy.rs`
@@ -68,7 +96,7 @@ cargo test --manifest-path src-tauri/Cargo.toml interface_copy::tests -- --nocap
 
 Expected: the exact-origin test passes, while the two new script-contract tests fail because the current script does not contain the sidebar, onboarding, or badge-removal behavior.
 
-### Task 2: Implement precise, idempotent DS Studio branding
+### Task 3: Implement precise, idempotent DS Studio branding
 
 **Files:**
 - Modify: `src-tauri/src/interface_copy.rs`
@@ -89,12 +117,20 @@ const copyReplacements = new Map([
   ['内测声明', '欢迎使用 DS Studio'],
   ['Internal Testing Notice', 'Welcome to DS Studio'],
   [
-    normalize('DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。\n\n我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。'),
-    'DS Studio 目前处于预览阶段，产品体验和基础能力会持续改进，欢迎反馈建议。\n\n我们期待与你一起，在开放、可复用、可组合的基础设施之上，共同探索智能上限。',
+    'DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。',
+    'DS Studio 目前处于预览阶段，产品体验和基础能力会持续改进，欢迎反馈建议。',
   ],
   [
-    normalize("DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem."),
-    'DS Studio is currently in preview. The product experience and foundational capabilities will continue to improve, and we welcome your feedback.\n\nWe look forward to exploring the limits of intelligence with you on open, reusable, and composable infrastructure.',
+    '我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。',
+    '我们期待与你一起，在开放、可复用、可组合的基础设施之上，共同探索智能上限。',
+  ],
+  [
+    "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.",
+    'DS Studio is currently in preview. The product experience and foundational capabilities will continue to improve, and we welcome your feedback.',
+  ],
+  [
+    'We look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.',
+    'We look forward to exploring the limits of intelligence with you on open, reusable, and composable infrastructure.',
   ],
   ['配置 DeepSeek 官方模型，即可开始使用。', '为 DS Studio 配置 DeepSeek 官方模型，即可开始使用。'],
   ['Configure the official DeepSeek provider to start building.', 'Configure the official DeepSeek provider for DS Studio to get started.'],
@@ -155,6 +191,7 @@ const replaceHeadline = (headline) => {
 ```javascript
 const replaceProductCopy = (element) => {
   if (!(element instanceof HTMLElement) || element.childElementCount !== 0) return;
+  if (!element.closest('[role="dialog"]')) return;
   const replacement = copyReplacements.get(normalize(element.textContent));
   if (replacement && element.textContent !== replacement) element.textContent = replacement;
 };
@@ -190,7 +227,7 @@ cargo test --manifest-path src-tauri/Cargo.toml interface_copy::tests -- --nocap
 
 Expected: all interface-copy tests pass.
 
-### Task 3: Keep script execution on the exact sidecar origin
+### Task 4: Keep script execution on the exact sidecar origin
 
 **Files:**
 - Modify: `src-tauri/src/lib.rs`
@@ -216,7 +253,7 @@ node --test scripts\*.test.mjs
 
 Expected: 35 or more Rust tests pass, all 21 Node tests pass, and formatting reports no diff.
 
-### Task 4: Verify the real desktop UI and unchanged assets
+### Task 5: Verify the real desktop UI and unchanged assets
 
 **Files:**
 - Verify only: `src-tauri/icons/icon.png`
@@ -239,6 +276,7 @@ Run a verification-only instance with a temporary Tauri identifier and data dire
 Verify:
 
 - title bar is `DS Studio`;
+- native startup guide shows `DS STUDIO` and `正在启动 DS Studio…`;
 - expanded sidebar shows only the prominent plain text `DS Studio`;
 - first-run welcome title/body use DS Studio in Chinese and English;
 - API-key onboarding description names DS Studio while keeping DeepSeek as the provider;
@@ -258,7 +296,7 @@ Expected: no output.
 - [ ] **Step 4: Commit only the scoped implementation and documentation**
 
 ```powershell
-git add -- src-tauri/src/interface_copy.rs src-tauri/src/lib.rs docs/superpowers/plans/2026-08-15-ds-studio-interface-copy.md
+git add -- ui/index.html scripts/runtime-policy.test.mjs src-tauri/src/interface_copy.rs src-tauri/src/lib.rs docs/superpowers/specs/2026-08-15-ds-studio-interface-copy-design.md docs/superpowers/plans/2026-08-15-ds-studio-interface-copy.md
 git commit -m "feat: unify DS Studio branding"
 ```
 

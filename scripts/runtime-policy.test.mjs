@@ -193,6 +193,18 @@ test('startup page exposes a text-only error state', () => {
   assert.doesNotMatch(source, /innerHTML/)
 })
 
+test('startup page uses DS Studio product copy', () => {
+  const source = readFileSync(join(projectRoot, 'ui', 'index.html'), 'utf8')
+
+  assert.match(source, /<title>DS Studio<\/title>/)
+  assert.match(source, /<h1>DS<br>STUDIO<\/h1>/)
+  assert.match(source, /正在启动 DS Studio…/)
+  assert.match(source, /DS Studio 未能完成启动。/)
+  assert.doesNotMatch(source, /DSH<br>STUDIO/)
+  assert.doesNotMatch(source, /正在启动官方 DSH Web/)
+  assert.doesNotMatch(source, /DSH host 未能完成启动。/)
+})
+
 test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.1', () => {
   const config = JSON.parse(
     readFileSync(join(projectRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'),
