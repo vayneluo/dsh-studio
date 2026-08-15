@@ -147,11 +147,14 @@ test('replaceRuntime swaps in a clean staging tree without stale files', (t) => 
   assert.throws(() => readFileSync(join(staging, 'node/node.exe')), /ENOENT/)
 })
 
-test('bundle host builds only the official DSH runtime', () => {
+test('bundle host builds the official DSH runtime and isolated default profile seed', () => {
   const source = readFileSync(join(scriptsDir, 'bundle-host.mjs'), 'utf8')
 
   assert.doesNotMatch(source, /@linxin666|dsh-web-ui|dsh-skins/)
-  assert.doesNotMatch(source, /\bpnpm\b|plugin.*add|runtime[\\/]['"]?home/i)
+  assert.doesNotMatch(source, /run\(['"]pnpm['"]/, 'runtime builds must not require a global pnpm executable')
+  assert.match(source, /import \{ buildDefaultProfile \} from ['"]\.\/default-profile\.mjs['"]/)
+  assert.match(source, /buildDefaultProfile\(\{ node, npmCli, dshBin, staging \}\)/)
+  assert.ok(source.indexOf('buildDefaultProfile(') < source.indexOf('rmSync(extracted,'))
   assert.match(source, /pruneRuntime\(host\)/)
   assert.match(source, /auditRuntime\(staging\)/)
   assert.match(source, /replaceRuntime\(staging, runtime\)/)

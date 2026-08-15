@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -12,27 +12,19 @@ const EXPECTED_DEPENDENCIES = {
   dshmarket: '1.2.2',
 }
 
-const makeValidProfile = (t) => {
-  const profile = mkdtempSync(join(tmpdir(), 'dsh-default-profile-test-'))
-  t.after(() => rmSync(profile, { recursive: true, force: true }))
-  writeFileSync(join(profile, 'package.json'), JSON.stringify({
-    name: 'dsh-profile-web',
-    private: true,
-    dependencies: EXPECTED_DEPENDENCIES,
-    dsh: {
-      profile: {
-        bundles: [
-          '@deepseek-ai/dsh-base',
-          '@deepseek-ai/dsh-web-app',
-          'dsh-at-file',
-          '@liustack/modlens',
-          'dsh-better-sidebar',
-          'dshmarket',
-          'dsh-message-edit',
-        ],
-      },
-    },
-  }))
+const AT_FILE_TARBALL = 'https://github.com/omdsh-dev/dsh-at-file/archive/e579d0deb2295d5fea37a89244f8d584999be850.tar.gz'
+
+const EXPECTED_BUNDLES = [
+  '@deepseek-ai/dsh-base',
+  '@deepseek-ai/dsh-web-app',
+  'dsh-at-file',
+  '@liustack/modlens',
+  'dsh-better-sidebar',
+  'dshmarket',
+  'dsh-message-edit',
+]
+
+const writeInstalledPackages = (profile) => {
   for (const [packageName, version] of [
     ['dsh-at-file', '0.6.0'],
     ['@liustack/modlens', '3.16.6'],
@@ -44,6 +36,27 @@ const makeValidProfile = (t) => {
     mkdirSync(packageDir, { recursive: true })
     writeFileSync(join(packageDir, 'package.json'), JSON.stringify({ name: packageName, version }))
   }
+}
+
+const writeValidProfile = (profile, dependencies = EXPECTED_DEPENDENCIES, bundles = EXPECTED_BUNDLES) => {
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(join(profile, 'package.json'), JSON.stringify({
+    name: 'dsh-profile-web',
+    private: true,
+    dependencies,
+    dsh: {
+      profile: {
+        bundles,
+      },
+    },
+  }))
+  writeInstalledPackages(profile)
+}
+
+const makeValidProfile = (t) => {
+  const profile = mkdtempSync(join(tmpdir(), 'dsh-default-profile-test-'))
+  t.after(() => rmSync(profile, { recursive: true, force: true }))
+  writeValidProfile(profile)
   return profile
 }
 
@@ -132,4 +145,71 @@ test('rejects an installed package version mismatch', async (t) => {
   const { validateDefaultProfile } = await import('./default-profile.mjs')
 
   assert.throws(() => validateDefaultProfile(profile), /dshmarket.*version/i)
+})
+
+test('builds a portable hoisted seed from the immutable GitHub tarball', async (t) => {
+  const staging = mkdtempSync(join(tmpdir(), 'dsh-default-profile-build-test-'))
+  t.after(() => rmSync(staging, { recursive: true, force: true }))
+  const calls = []
+  const profile = join(staging, 'profile-seed', 'profiles', 'web')
+  const { buildDefaultProfile } = await import('./default-profile.mjs')
+
+  assert.equal(typeof buildDefaultProfile, 'function')
+  const result = buildDefaultProfile({
+    node: 'C:\\staged-node\\node.exe',
+    npmCli: 'C:\\staged-node\\npm-cli.js',
+    dshBin: 'C:\\staged-host\\dsh.js',
+    staging,
+    baseEnv: {
+      Path: 'C:\\Windows',
+      NPM_CONFIG_REGISTRY: 'http://npm.invalid.local/',
+      npm_config_proxy: 'http://proxy.invalid.local/',
+      SAFE_VALUE: 'kept',
+    },
+    run: (command, args, options) => {
+      calls.push({ command, args, env: options.env })
+      writeValidProfile(
+        profile,
+        { ...EXPECTED_DEPENDENCIES, 'dsh-at-file': AT_FILE_TARBALL },
+        [
+          '@deepseek-ai/dsh-base',
+          '@deepseek-ai/dsh-web-app',
+          '@liustack/modlens',
+          'dsh-at-file',
+          'dsh-better-sidebar',
+          'dsh-message-edit',
+          'dshmarket',
+        ],
+      )
+      writeInstalledPackages(profile)
+      mkdirSync(join(profile, 'node_modules', '.pnpm'), { recursive: true })
+      writeFileSync(join(profile, 'node_modules', '.pnpm', 'lock.yaml'), 'lockfileVersion: 9')
+      mkdirSync(join(profile, 'node_modules', '.bin'), { recursive: true })
+      writeFileSync(join(profile, 'node_modules', '.bin', 'unused.cmd'), 'unused')
+      writeFileSync(join(profile, 'node_modules', 'dshmarket', 'debug.pdb'), 'debug')
+    },
+  })
+
+  assert.equal(result.profileDir, profile)
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].command, 'C:\\staged-node\\node.exe')
+  assert.deepEqual(calls[0].args.slice(0, 6), [
+    'C:\\staged-host\\dsh.js', 'plugin', '--profile', 'web', 'add', '-w',
+  ])
+  assert.ok(calls[0].args.includes('--config.node-linker=hoisted'))
+  assert.ok(calls[0].args.includes('--config.auto-install-peers=false'))
+  assert.ok(calls[0].args.includes(AT_FILE_TARBALL))
+  for (const call of calls) {
+    assert.equal(call.env.NPM_CONFIG_REGISTRY, 'https://registry.npmjs.org/')
+    assert.equal(call.env.NPM_CONFIG_AUTO_INSTALL_PEERS, 'false')
+    assert.equal(call.env.SAFE_VALUE, 'kept')
+    assert.equal(Object.values(call.env).includes('http://npm.invalid.local/'), false)
+    assert.equal(Object.values(call.env).includes('http://proxy.invalid.local/'), false)
+  }
+  assert.equal(existsSync(join(profile, 'node_modules', '.pnpm')), false)
+  assert.equal(existsSync(join(profile, 'node_modules', '.bin')), false)
+  assert.equal(existsSync(join(profile, 'node_modules', 'dshmarket', 'debug.pdb')), false)
+  assert.deepEqual(JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8')).dependencies, EXPECTED_DEPENDENCIES)
+  assert.equal(existsSync(join(staging, 'default-profile-npm-user.ini')), false)
+  assert.equal(existsSync(join(staging, 'default-profile-npm-global.ini')), false)
 })

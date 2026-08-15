@@ -1,7 +1,11 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { delimiter, dirname, join } from 'node:path'
 
-import { auditPortableTree } from './runtime-policy.mjs'
+import { auditPortableTree, pruneRuntime } from './runtime-policy.mjs'
+
+const NPM_REGISTRY = 'https://registry.npmjs.org/'
+const AT_FILE_TARBALL = 'https://github.com/omdsh-dev/dsh-at-file/archive/e579d0deb2295d5fea37a89244f8d584999be850.tar.gz'
 
 export const DEFAULT_PLUGINS = Object.freeze([
   {
@@ -44,6 +48,10 @@ export const DEFAULT_BUNDLES = Object.freeze([
 
 const expectedDependencySpec = (plugin) => (
   plugin.packageName === 'dsh-at-file' ? plugin.target : plugin.version
+)
+
+const installTarget = (plugin) => (
+  plugin.packageName === 'dsh-at-file' ? AT_FILE_TARBALL : plugin.target
 )
 
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
@@ -92,5 +100,74 @@ export const validateDefaultProfile = (profileDir) => {
     ...audit,
     dependencies: dependencyNames.length,
     bundles: DEFAULT_BUNDLES.length,
+  }
+}
+
+const runCommand = (command, args, options = {}) => {
+  console.log('>', command, args.join(' '))
+  execFileSync(command, args, { stdio: 'inherit', ...options })
+}
+
+const normalizeProfileManifest = (profileDir) => {
+  const manifestPath = join(profileDir, 'package.json')
+  const manifest = readJson(manifestPath)
+  manifest.dependencies['dsh-at-file'] = expectedDependencySpec(DEFAULT_PLUGINS[0])
+  manifest.dsh.profile.bundles = [...DEFAULT_BUNDLES]
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+}
+
+const createIsolatedNpmEnvironment = (staging, node, baseEnv) => {
+  const env = Object.fromEntries(
+    Object.entries(baseEnv).filter(([name]) => !name.toLowerCase().startsWith('npm_config_')),
+  )
+  const pathKey = Object.keys(env).find((name) => name.toLowerCase() === 'path') ?? 'Path'
+  const userConfig = join(staging, 'default-profile-npm-user.ini')
+  const globalConfig = join(staging, 'default-profile-npm-global.ini')
+  mkdirSync(staging, { recursive: true })
+  writeFileSync(userConfig, '')
+  writeFileSync(globalConfig, '')
+  env[pathKey] = `${dirname(node)}${delimiter}${env[pathKey] ?? ''}`
+  env.NPM_CONFIG_USERCONFIG = userConfig
+  env.NPM_CONFIG_GLOBALCONFIG = globalConfig
+  env.NPM_CONFIG_REGISTRY = NPM_REGISTRY
+  env.NPM_CONFIG_AUTO_INSTALL_PEERS = 'false'
+  return { env, globalConfig, userConfig }
+}
+
+export const buildDefaultProfile = ({
+  node,
+  dshBin,
+  staging,
+  baseEnv = process.env,
+  run = runCommand,
+}) => {
+  const seedHome = join(staging, 'profile-seed')
+  const profileDir = join(seedHome, 'profiles', 'web')
+  const isolated = createIsolatedNpmEnvironment(staging, node, baseEnv)
+
+  try {
+    run(node, [
+      dshBin,
+      'plugin',
+      '--profile',
+      'web',
+      'add',
+      '-w',
+      '--config.node-linker=hoisted',
+      '--config.auto-install-peers=false',
+      ...DEFAULT_PLUGINS.map(installTarget),
+    ], { env: { ...isolated.env, DSH_HOME: seedHome } })
+
+    normalizeProfileManifest(profileDir)
+    rmSync(join(profileDir, 'node_modules', '.pnpm'), { recursive: true, force: true })
+    rmSync(join(profileDir, 'node_modules', '.bin'), { recursive: true, force: true })
+    rmSync(join(profileDir, 'node_modules', '.modules.yaml'), { force: true })
+    rmSync(join(profileDir, 'pnpm-lock.yaml'), { force: true })
+    const pruned = pruneRuntime(profileDir)
+    const audit = validateDefaultProfile(profileDir)
+    return { audit, profileDir, pruned, seedHome }
+  } finally {
+    rmSync(isolated.userConfig, { force: true })
+    rmSync(isolated.globalConfig, { force: true })
   }
 }

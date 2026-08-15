@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { buildDefaultProfile } from './default-profile.mjs'
 import { auditRuntime, pruneRuntime, replaceRuntime } from './runtime-policy.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
@@ -97,6 +98,7 @@ const nodeDir = join(staging, 'node')
 try {
   const { node, npmCli, extracted } = installNode(nodeDir, staging)
   const dshBin = installDsh(node, npmCli, host, staging)
+  const profile = buildDefaultProfile({ node, npmCli, dshBin, staging })
   rmSync(extracted, { recursive: true, force: true })
   const pruned = pruneRuntime(host)
   verifyOfficialProfile(node, dshBin)
@@ -104,6 +106,7 @@ try {
   replaceRuntime(staging, runtime)
 
   console.log(`Pruned ${pruned.removedFiles} files (${(pruned.removedBytes / 1024 / 1024).toFixed(2)} MiB)`)
+  console.log(`Default profile ${profile.audit.files} files, ${(profile.audit.bytes / 1024 / 1024).toFixed(2)} MiB`)
   console.log(`Runtime ${audit.files} files, ${(audit.bytes / 1024 / 1024).toFixed(2)} MiB`)
   console.log('bundle-host done')
 } finally {

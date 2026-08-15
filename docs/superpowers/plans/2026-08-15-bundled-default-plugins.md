@@ -174,38 +174,34 @@ Run: `node --test scripts/default-profile.test.mjs`
 
 Expected: FAIL because `buildDefaultProfile` is not implemented.
 
-- [ ] **Step 3: Implement staged DSH install followed by a flat npm install**
+- [x] **Step 3: Implement staged DSH install as a hoisted physical tree**
 
 Implement this sequence in `buildDefaultProfile`:
 
 ```js
-export const buildDefaultProfile = ({ node, npmCli, dshBin, staging, run = runCommand }) => {
+export const buildDefaultProfile = ({ node, dshBin, staging, run = runCommand }) => {
   const seedHome = join(staging, 'profile-seed')
   const profileDir = join(seedHome, 'profiles', 'web')
   const isolated = createIsolatedNpmEnvironment(staging, node)
 
   run(node, [
     dshBin, 'plugin', '--profile', 'web', 'add', '-w',
-    ...DEFAULT_PLUGINS.map(({ target }) => target),
+    '--config.node-linker=hoisted', '--config.auto-install-peers=false',
+    immutableTarballForGitPlugin, ...DEFAULT_PLUGINS.slice(1).map(({ target }) => target),
   ], { env: { ...isolated, DSH_HOME: seedHome } })
 
-  rmSync(join(profileDir, 'node_modules'), { recursive: true, force: true })
-  rmSync(join(profileDir, 'pnpm-lock.yaml'), { force: true })
-  run(node, [
-    npmCli, 'install', '--prefix', profileDir,
-    '--registry=https://registry.npmjs.org/',
-    '--@deepseek-ai:registry=https://registry.npmjs.org/',
-    '--legacy-peer-deps', '--omit=dev', '--no-audit', '--no-fund',
-  ], { env: isolated })
-
+  normalizeProfileManifest(profileDir)
+  rmSync(join(profileDir, 'node_modules', '.pnpm'), { recursive: true, force: true })
   rmSync(join(profileDir, 'node_modules', '.bin'), { recursive: true, force: true })
+  rmSync(join(profileDir, 'node_modules', '.modules.yaml'), { force: true })
+  rmSync(join(profileDir, 'pnpm-lock.yaml'), { force: true })
   pruneRuntime(profileDir)
   validateDefaultProfile(profileDir)
   return { seedHome, profileDir }
 }
 ```
 
-`createIsolatedNpmEnvironment` must strip inherited `npm_config_*`, prepend the staged Node directory to `Path`, point user/global config to empty staging files, and set the official registries plus `NPM_CONFIG_AUTO_INSTALL_PEERS=false`.
+`createIsolatedNpmEnvironment` must strip inherited `npm_config_*`, prepend the staged Node directory to `Path`, point user/global config to empty staging files, and set the official registries plus `NPM_CONFIG_AUTO_INSTALL_PEERS=false`. The immutable GitHub tarball avoids npm/pnpm Git preparation of the plugin's local `link:` development dependencies; the normalized manifest retains the approved `github:` target. Hoisted pnpm output is audited to contain no reparse points.
 
 - [ ] **Step 4: Integrate the builder before runtime audit/publish**
 
