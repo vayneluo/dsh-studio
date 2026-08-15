@@ -1,4 +1,5 @@
 mod port;
+mod profile;
 mod sidecar;
 
 use std::path::Path;
