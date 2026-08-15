@@ -8,6 +8,8 @@
 - 不包含此前移除的 `@linxin666` 增强 UI、皮肤或 SSH 集成。
 - sidecar 仅监听 `127.0.0.1`，端口由桌面壳动态分配。
 - 启动页立即显示；后台收到 HTTP 成功响应后再进入 DSH Web。
+- 首次进入时显示两步模型服务向导，可选择 DeepSeek、百炼、火山方舟、智谱、OpenAI、Anthropic、Gemini、OpenRouter、Ollama 或 OpenAI Compatible；DeepSeek 不再是必选项。
+- 向导可持久跳过，并复用“设置 → 模型”的原有编辑器、校验、模型发现和凭据写入逻辑；无可用模型时可从模型选择器直接打开模型设置。
 - host 输出写入应用数据目录的 `dsh-host.log`；启动失败时页面显示日志路径。
 - 退出时终止 sidecar 及其子进程树。
 - Windows x64 runtime 在构建时剔除调试符号、source map、类型声明和非目标平台原生产物。
@@ -27,6 +29,7 @@ node scripts/bundle-host.mjs
 # 快速门禁
 node --test scripts/default-profile.test.mjs
 node --test scripts/runtime-policy.test.mjs
+node --test scripts/provider-onboarding-override.test.mjs
 node scripts/smoke-test.mjs
 $env:DSH_SMOKE_USE_SEED='1'; node scripts/smoke-test.mjs; Remove-Item Env:DSH_SMOKE_USE_SEED
 cargo test --manifest-path src-tauri/Cargo.toml
@@ -43,6 +46,20 @@ Pop-Location
 ```
 
 默认 profile seed、完整 runtime 与 NSIS 安装包的硬门禁分别为 35 MiB、260 MiB、70 MiB。
+
+## 模型服务引导
+
+模型服务向导只负责选择与引导，实际配置仍由现有 Models 功能完成。OpenAI Compatible 支持填写可编辑的 Base URL、API Key、协议，并沿用原有“获取模型”和手动添加模型能力。API Key 仅通过 Harness 的 credentials API 写入，不会写入 `settings.yaml`，向导也不会读取或输出密钥明文。
+
+明确选择“跳过，稍后配置”后，`ui-onboarding.providerSetupVersion` 会记录当前引导版本，重启不会重复弹出。以后仍可进入“设置 → 模型”添加或切换服务商。
+
+该界面使用本地文本 monogram 和主题色作为厂商识别标记，不加载远程图标、字体、脚本或跟踪资源。第三方名称及商标归各自权利人所有，详见 `overrides/provider-onboarding/THIRD_PARTY_NOTICES.md`。
+
+## Runtime override 维护边界
+
+`scripts/provider-onboarding-override.mjs` 固定针对 DeepSeek Harness `0.1.0-rc.6` 的编译产物。`scripts/bundle-host.mjs` 在安装官方 runtime 后、生成默认 profile 和裁剪 runtime 前应用该转换。每个目标包版本和源码锚点都必须精确匹配且只出现一次；上游版本或 bundle 结构漂移时构建会主动失败，升级 Harness 时必须显式移植或移除 override。
+
+忽略目录中的 `runtime/` 只用于本地运行与验证，不是实现来源；可维护源码位于 `overrides/provider-onboarding/` 和 `scripts/provider-onboarding-override.mjs`。
 
 ## 用户数据
 

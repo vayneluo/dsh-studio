@@ -8,6 +8,7 @@ import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { buildDefaultProfile } from './default-profile.mjs'
+import { applyProviderOnboardingOverride } from './provider-onboarding-override.mjs'
 import { auditRuntime, pruneRuntime, replaceRuntime } from './runtime-policy.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
@@ -98,6 +99,7 @@ const nodeDir = join(staging, 'node')
 try {
   const { node, npmCli, extracted } = installNode(nodeDir, staging)
   const dshBin = installDsh(node, npmCli, host, staging)
+  applyProviderOnboardingOverride(host)
   const profile = buildDefaultProfile({ node, dshBin, staging })
   rmSync(extracted, { recursive: true, force: true })
   const pruned = pruneRuntime(host)
