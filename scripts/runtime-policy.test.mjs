@@ -183,14 +183,35 @@ test('startup page exposes a text-only error state', () => {
   assert.doesNotMatch(source, /innerHTML/)
 })
 
-test('Tauri bundles only the Node executable and official DSH host', () => {
+test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.1', () => {
   const config = JSON.parse(
     readFileSync(join(projectRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'),
   )
 
+  assert.equal(config.version, '0.1.1')
   assert.deepEqual(config.bundle.resources, {
     '../runtime/node/node.exe': 'runtime/node/node.exe',
     '../runtime/host': 'runtime/host',
+    '../runtime/profile-seed': 'runtime/profile-seed',
   })
   assert.equal(config.app.withGlobalTauri, true)
+})
+
+test('startup seeds after legacy migration and before sidecar spawn', () => {
+  const source = readFileSync(join(projectRoot, 'src-tauri', 'src', 'lib.rs'), 'utf8')
+  const migrate = source.indexOf('migrate_legacy_web_profile')
+  const seed = source.indexOf('seed_new_web_profile')
+  const spawn = source.indexOf('sidecar::spawn')
+
+  assert.ok(migrate >= 0)
+  assert.ok(migrate < seed && seed < spawn)
+})
+
+test('HTTP smoke can exercise and validate the bundled profile seed', () => {
+  const source = readFileSync(join(scriptsDir, 'smoke-test.mjs'), 'utf8')
+
+  assert.match(source, /DSH_SMOKE_USE_SEED/)
+  assert.match(source, /runtime['"], ['"]profile-seed/)
+  assert.match(source, /validateDefaultProfile/)
+  assert.match(source, /DEFAULT_BUNDLES/)
 })

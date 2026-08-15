@@ -2,16 +2,20 @@
 // Start the packaged official DSH Web sidecar with a clean temporary home,
 // verify the real HTTP page, and tear down the complete process tree.
 import { execFileSync, spawn } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { DEFAULT_BUNDLES, validateDefaultProfile } from './default-profile.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const root = join(scriptsDir, '..')
 const node = join(root, 'runtime', 'node', 'node.exe')
 const dshBin = join(root, 'runtime', 'host', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+const seedProfile = join(root, 'runtime', 'profile-seed', 'profiles', 'web')
 const home = mkdtempSync(join(tmpdir(), 'dsh-studio-smoke-'))
+const useSeed = process.env.DSH_SMOKE_USE_SEED === '1'
 
 let child
 
@@ -50,11 +54,25 @@ const waitForUrl = (timeoutMs) => new Promise((resolve, reject) => {
 
 const main = async () => {
   try {
+    if (useSeed) {
+      validateDefaultProfile(seedProfile)
+      mkdirSync(join(home, 'profiles'), { recursive: true })
+      cpSync(seedProfile, join(home, 'profiles', 'web'), {
+        recursive: true,
+        errorOnExist: true,
+      })
+    }
+
     const config = execFileSync(node, [dshBin, 'web', '--dump-config'], {
       encoding: 'utf8',
       env: { ...process.env, DSH_HOME: home },
     })
     if (config.includes('@linxin666')) throw new Error('enhanced Web UI leaked into the official profile')
+    if (useSeed) {
+      for (const bundle of DEFAULT_BUNDLES) {
+        if (!config.includes(bundle)) throw new Error(`seeded bundle missing from config: ${bundle}`)
+      }
+    }
 
     child = spawn(node, [dshBin, 'web', '--host', '127.0.0.1', '--port', '0'], {
       env: { ...process.env, DSH_HOME: home },
@@ -68,7 +86,7 @@ const main = async () => {
     if (response.status < 200 || response.status >= 400) {
       throw new Error(`unexpected UI status ${response.status}`)
     }
-    console.log('SMOKE OK: official DSH Web')
+    console.log(`SMOKE OK: ${useSeed ? 'seeded' : 'official'} DSH Web`)
   } finally {
     killTree()
     rmSync(home, { recursive: true, force: true })
