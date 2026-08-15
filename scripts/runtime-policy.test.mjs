@@ -211,12 +211,12 @@ test('startup page uses DS Studio product copy', () => {
   assert.doesNotMatch(source, /DSH host 未能完成启动。/)
 })
 
-test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.1', () => {
+test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.2', () => {
   const config = JSON.parse(
     readFileSync(join(projectRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'),
   )
 
-  assert.equal(config.version, '0.1.1')
+  assert.equal(config.version, '0.1.2')
   assert.deepEqual(config.bundle.resources, {
     '../runtime/node/node.exe': 'runtime/node/node.exe',
     '../runtime/host': 'runtime/host',
