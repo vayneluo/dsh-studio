@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="DS Studio 是 DeepSeek Harness 官方 Web UI 的 Windows 桌面封装。内置 Node.js、DSH Runtime 与常用插件，下载即可使用。"
+    />
+    <meta name="theme-color" content="#050914" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="DS Studio — 把 Harness，放进桌面" />
+    <meta
+      property="og:description"
+      content="DeepSeek Harness，开箱即用的 Windows 桌面工作台。"
+    />
+    <title>DS Studio — DeepSeek Harness Windows 桌面工作台</title>
+    <link rel="icon" href="./assets/logo.png" type="image/png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+    <div class="site-shell">
+      <header class="site-header">
+        <nav class="nav wrap" aria-label="主导航">
+          <a class="brand" href="#top" aria-label="DS Studio 首页">
+            <span class="brand-mark">
+              <img src="./assets/logo.png" alt="" width="32" height="32" />
+            </span>
+            <span>DS Studio</span>
+          </a>
+
+          <div class="nav-links">
+            <a href="#features">能力</a>
+            <a href="#models">模型服务</a>
+            <a
+              href="https://github.com/vayneluo/dsh-studio"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GitHub</a>
+          </div>
+
+          <a
+            class="nav-download"
+            href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.2/dsh-studio_0.1.2_x64-setup.exe"
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+          >
+            下载 <span>0.1.2</span>
+          </a>
+        </nav>
+      </header>
+
+      <main id="main-content">
+        <section class="hero wrap" id="top">
+          <div class="hero-copy" data-reveal>
+            <div class="eyebrow">
+              <span class="status-dot" aria-hidden="true"></span>
+              DS STUDIO / RELEASE 0.1.2
+            </div>
+            <h1>把 Harness，<br /><em>放进桌面。</em></h1>
+            <p class="hero-lead">
+              DeepSeek Harness 官方 Web UI 的 Windows 桌面封装。内置运行环境与常用插件，
+              不用安装 Node，不用手动启动服务。
+            </p>
+
+            <div class="hero-actions">
+              <a
+                class="button button-primary"
+                href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.2/dsh-studio_0.1.2_x64-setup.exe"
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+              >
+                <span class="windows-glyph" aria-hidden="true">⊞</span>
+                下载 Windows x64
+                <span class="button-arrow" aria-hidden="true">↘</span>
+              </a>
+              <a
+                class="button button-ghost"
+                href="https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >查看更新说明 <span aria-hidden="true">↗</span></a>
+            </div>
+
+            <dl class="hero-meta" aria-label="版本信息">
+              <div>
+                <dt>系统</dt>
+                <dd>Windows 11 x64</dd>
+              </div>
+              <div>
+                <dt>版本</dt>
+                <dd>0.1.2</dd>
+              </div>
+              <div>
+                <dt>许可</dt>
+                <dd>MIT</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="hero-visual" data-reveal>
+            <div class="orbit orbit-one" aria-hidden="true"></div>
+            <div class="orbit orbit-two" aria-hidden="true"></div>
+
+            <div class="app-window" aria-label="DS Studio 模型服务引导界面预览">
+              <div class="window-bar">
+                <div class="window-brand">
+                  <span class="mini-mark">
+                    <img src="./assets/logo.png" alt="" width="18" height="18" />
+                  </span>
+                  <span>DS Studio</span>
+                </div>
+                <div class="window-controls" aria-hidden="true">
+                  <i></i><i></i><i></i>
+                </div>
+              </div>
+
+              <div class="window-layout">
+                <aside class="app-sidebar" aria-hidden="true">
+                  <div class="sidebar-top">
+                    <span class="side-item side-item-active"></span>
+                    <span class="side-item"></span>
+                    <span class="side-item side-item-short"></span>
+                  </div>
+                  <div class="sidebar-bottom">
+                    <span class="side-avatar">DS</span>
+                  </div>
+                </aside>
+
+                <div class="app-content">
+                  <div class="content-kicker">SETUP / 01</div>
+                  <div class="setup-head">
+                    <div>
+                      <h2>选择模型服务</h2>
+                      <p>连接你常用的模型，稍后也可以随时更改。</p>
+                    </div>
+                    <span class="local-badge"><i></i> Local</span>
+                  </div>
+
+                  <div class="provider-grid">
+                    <div class="provider-card provider-card-active">
+                      <span class="provider-code">DS</span>
+                      <span>
+                        <strong>DeepSeek</strong>
+                        <small>官方服务</small>
+                      </span>
+                      <b aria-label="已选择">✓</b>
+                    </div>
+                    <div class="provider-card">
+                      <span class="provider-code provider-code-openai">OA</span>
+                      <span>
+                        <strong>OpenAI</strong>
+                        <small>API Platform</small>
+                      </span>
+                    </div>
+                    <div class="provider-card">
+                      <span class="provider-code provider-code-ollama">OL</span>
+                      <span>
+                        <strong>Ollama</strong>
+                        <small>本地模型</small>
+                      </span>
+                    </div>
+                    <div class="provider-card provider-more">
+                      <span class="provider-code">+7</span>
+                      <span>
+                        <strong>更多服务</strong>
+                        <small>开放兼容</small>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="setup-footer">
+                    <span><i></i> 凭据由 Harness 安全管理</span>
+                    <button type="button" tabindex="-1">继续设置 <b>→</b></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="visual-note visual-note-top" aria-hidden="true">
+              <span>HOST</span>
+              <strong>127.0.0.1</strong>
+            </div>
+            <div class="visual-note visual-note-bottom" aria-hidden="true">
+              <i></i>
+              <span>Runtime ready</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="proof-strip" aria-label="产品概览">
+          <div class="wrap proof-inner">
+            <span>DESKTOP NATIVE</span>
+            <span aria-hidden="true">/</span>
+            <span>OFFLINE PLUGINS</span>
+            <span aria-hidden="true">/</span>
+            <span>LOCAL SIDECAR</span>
+            <span aria-hidden="true">/</span>
+            <span>MODEL NEUTRAL</span>
+          </div>
+        </section>
+
+        <section class="features section wrap" id="features">
+          <div class="section-heading" data-reveal>
+            <p class="section-index">01 / WHY DS STUDIO</p>
+            <h2>一个安装包，<br />省掉所有准备工作。</h2>
+            <p>
+              桌面壳负责窗口、Host 与进程生命周期，Harness 专注于工作本身。
+            </p>
+          </div>
+
+          <div class="feature-list">
+            <article class="feature-row" data-reveal>
+              <span class="feature-number">01</span>
+              <div class="feature-icon" aria-hidden="true">⌁</div>
+              <div>
+                <h3>开箱即用</h3>
+                <p>内置 Node.js 与 <code>@deepseek-ai/dsh</code>，终端用户无需配置运行环境。</p>
+              </div>
+              <span class="feature-tag">ZERO SETUP</span>
+            </article>
+
+            <article class="feature-row" data-reveal>
+              <span class="feature-number">02</span>
+              <div class="feature-icon" aria-hidden="true">◇</div>
+              <div>
+                <h3>多模型自由</h3>
+                <p>首次启动通过两步引导接入常用模型服务，也可以稍后在设置中随时切换。</p>
+              </div>
+              <span class="feature-tag">10 PROVIDERS</span>
+            </article>
+
+            <article class="feature-row" data-reveal>
+              <span class="feature-number">03</span>
+              <div class="feature-icon" aria-hidden="true">▦</div>
+              <div>
+                <h3>插件已就位</h3>
+                <p>为全新安装离线预装 5 个固定插件，无需联网下载，也无需重启启用。</p>
+              </div>
+              <span class="feature-tag">OFFLINE READY</span>
+            </article>
+
+            <article class="feature-row" data-reveal>
+              <span class="feature-number">04</span>
+              <div class="feature-icon" aria-hidden="true">◎</div>
+              <div>
+                <h3>本地边界清晰</h3>
+                <p>Sidecar 仅监听 127.0.0.1；关闭应用时，会一并终止 Host 及其子进程树。</p>
+              </div>
+              <span class="feature-tag">LOCAL ONLY</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="models section" id="models">
+          <div class="wrap models-layout">
+            <div class="models-copy" data-reveal>
+              <p class="section-index">02 / BRING YOUR MODEL</p>
+              <h2>模型由你选择，<br />工作流保持一致。</h2>
+              <p>
+                从云端 API 到本地 Ollama，DS Studio 只负责顺畅接入，不替你决定模型。
+              </p>
+            </div>
+
+            <div class="model-rail" data-reveal aria-label="支持的模型服务">
+              <div class="model-row model-row-shifted">
+                <span><b>DS</b> DeepSeek</span>
+                <span><b>BY</b> 百炼</span>
+                <span><b>VC</b> 火山方舟</span>
+                <span><b>GL</b> 智谱</span>
+                <span><b>OA</b> OpenAI</span>
+              </div>
+              <div class="model-row">
+                <span><b>AN</b> Anthropic</span>
+                <span><b>GM</b> Gemini</span>
+                <span><b>OR</b> OpenRouter</span>
+                <span><b>OL</b> Ollama</span>
+              </div>
+              <div class="compatible-row">
+                <span class="compatible-mark">∞</span>
+                <div>
+                  <strong>OpenAI Compatible</strong>
+                  <small>自定义 Base URL、协议与模型</small>
+                </div>
+                <span aria-hidden="true">→</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="process section wrap" aria-labelledby="process-title">
+          <div class="process-head" data-reveal>
+            <p class="section-index">03 / START IN MINUTES</p>
+            <h2 id="process-title">从下载到工作，三步。</h2>
+          </div>
+
+          <ol class="process-grid">
+            <li data-reveal>
+              <span>01</span>
+              <h3>下载安装</h3>
+              <p>获取 Windows x64 安装包，按向导完成安装。</p>
+            </li>
+            <li data-reveal>
+              <span>02</span>
+              <h3>选择服务</h3>
+              <p>首次进入时，选择你已有账号或本地运行的模型服务。</p>
+            </li>
+            <li data-reveal>
+              <span>03</span>
+              <h3>开始使用</h3>
+              <p>进入官方 DSH Web 工作台，插件与运行环境已经就绪。</p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="download-section" id="download">
+          <div class="download-glow" aria-hidden="true"></div>
+          <div class="wrap download-inner" data-reveal>
+            <div>
+              <p class="section-index">DS STUDIO 0.1.2</p>
+              <h2>让环境退后，<br />让工作开始。</h2>
+            </div>
+            <div class="download-action">
+              <p>适用于 Windows 11 x64</p>
+              <a
+                class="button button-light"
+                href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.2/dsh-studio_0.1.2_x64-setup.exe"
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+              >
+                立即下载 <span>↘</span>
+              </a>
+              <small>版本 0.1.2 · Windows 安装程序</small>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="wrap footer-top">
+          <a class="brand footer-brand" href="#top" aria-label="返回顶部">
+            <span class="brand-mark">
+              <img src="./assets/logo.png" alt="" width="32" height="32" />
+            </span>
+            <span>DS Studio</span>
+          </a>
+          <p>DeepSeek Harness 的 Windows 桌面工作台。</p>
+          <div class="footer-links">
+            <a
+              href="https://github.com/vayneluo/dsh-studio"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GitHub ↗</a>
+            <a
+              href="https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Release 0.1.2 ↗</a>
+          </div>
+        </div>
+        <div class="wrap footer-bottom">
+          <span>© 2026 DS Studio</span>
+          <span>项目代码采用 MIT 许可 · DeepSeek Harness 按上游许可分发</span>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
