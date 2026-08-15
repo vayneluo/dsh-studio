@@ -1,3 +1,4 @@
+mod interface_copy;
 mod job;
 mod port;
 mod profile;
@@ -173,6 +174,7 @@ pub fn run() {
         })
         .manage(StartupUiState(AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![startup_ui_ready])
+        .on_page_load(interface_copy::handle_page_load)
         .setup(|app| {
             let app_handle = app.handle().clone();
             spawn_background(move || {
@@ -209,6 +211,13 @@ mod app_tests {
     use super::{error_script, require_navigation, spawn_background};
     use std::sync::mpsc;
     use std::time::Duration;
+
+    #[test]
+    fn main_window_uses_the_ds_studio_title() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert_eq!(config["app"]["windows"][0]["title"], "DS Studio");
+    }
 
     #[test]
     fn startup_error_script_serializes_untrusted_text() {
