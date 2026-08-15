@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
 import { auditRuntime, pruneRuntime } from './runtime-policy.mjs'
+
+const scriptsDir = dirname(fileURLToPath(import.meta.url))
+const projectRoot = join(scriptsDir, '..')
 
 const makeFixture = () => mkdtempSync(join(tmpdir(), 'dsh-runtime-policy-'))
 
@@ -70,4 +74,13 @@ test('auditRuntime enforces the expanded runtime byte budget', (t) => {
     () => auditRuntime(root, { maxBytes: 32 }),
     /runtime budget exceeded/i,
   )
+})
+
+test('bundle host builds only the official DSH runtime', () => {
+  const source = readFileSync(join(scriptsDir, 'bundle-host.mjs'), 'utf8')
+
+  assert.doesNotMatch(source, /@linxin666|dsh-web-ui|dsh-skins/)
+  assert.doesNotMatch(source, /\bpnpm\b|plugin.*add|runtime[\\/]['"]?home/i)
+  assert.match(source, /pruneRuntime\(host\)/)
+  assert.match(source, /auditRuntime\(runtime\)/)
 })

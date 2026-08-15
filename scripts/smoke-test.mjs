@@ -1,54 +1,81 @@
 #!/usr/bin/env node
-// 冒烟：以 sidecar 方式起宿主（node <dsh_bin> web），验证就绪 + UI 可达（HTTP 响应），
-// 退出后树清理进程，不留残留。
-import { spawn, execFileSync } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+// Start the packaged official DSH Web sidecar with a clean temporary home,
+// verify the real HTTP page, and tear down the complete process tree.
+import { execFileSync, spawn } from 'node:child_process'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const root = join(__dirname, '..')
+const scriptsDir = dirname(fileURLToPath(import.meta.url))
+const root = join(scriptsDir, '..')
 const node = join(root, 'runtime', 'node', 'node.exe')
 const dshBin = join(root, 'runtime', 'host', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-const home = join(root, 'runtime', 'home')
+const home = mkdtempSync(join(tmpdir(), 'dsh-studio-smoke-'))
 
-const child = spawn(node, [dshBin, 'web', '--host', '127.0.0.1', '--port', '0'], {
-  env: { ...process.env, DSH_HOME: home },
-  stdio: ['ignore', 'pipe', 'pipe'],
-})
+let child
 
-let out = ''
-child.stdout.on('data', (d) => { out += d; process.stdout.write(d) })
-child.stderr.on('data', (d) => { out += d; process.stderr.write(d) })
-
-function killTree() {
+const killTree = () => {
+  if (!child?.pid) return
   try {
     execFileSync('taskkill', ['/F', '/T', '/PID', String(child.pid)], { stdio: 'ignore' })
-  } catch { /* 已退出则忽略 */ }
-}
-
-function fail(msg) {
-  console.error(`\nFAIL: ${msg}`)
-  killTree()
-  process.exit(1)
-}
-
-const deadline = Date.now() + 30_000
-const timer = setInterval(() => {
-  const m = out.match(/http:\/\/127\.0\.0\.1:(\d+)/)
-  if (!m) {
-    if (Date.now() > deadline) fail('未在 30s 内就绪')
-    return
+  } catch {
+    // The process may already have exited.
   }
-  clearInterval(timer)
-  const url = m[0]
-  fetch(`${url}/`).then((res) => {
-    console.log(`\nHTTP ${res.status} at ${url}/`)
-    if (res.status >= 500) {
-      killTree()
-      process.exit(1)
+}
+
+const waitForUrl = (timeoutMs) => new Promise((resolve, reject) => {
+  let output = ''
+  const timer = setTimeout(() => reject(new Error(`sidecar was not ready after ${timeoutMs} ms`)), timeoutMs)
+
+  const consume = (chunk) => {
+    output += chunk
+    process.stdout.write(chunk)
+    const match = output.match(/http:\/\/127\.0\.0\.1:(\d+)/)
+    if (!match) return
+    clearTimeout(timer)
+    resolve(match[0])
+  }
+
+  child.stdout.on('data', consume)
+  child.stderr.on('data', (chunk) => {
+    output += chunk
+    process.stderr.write(chunk)
+  })
+  child.once('exit', (code) => {
+    clearTimeout(timer)
+    reject(new Error(`sidecar exited before readiness with code ${code}`))
+  })
+})
+
+const main = async () => {
+  try {
+    const config = execFileSync(node, [dshBin, 'web', '--dump-config'], {
+      encoding: 'utf8',
+      env: { ...process.env, DSH_HOME: home },
+    })
+    if (config.includes('@linxin666')) throw new Error('enhanced Web UI leaked into the official profile')
+
+    child = spawn(node, [dshBin, 'web', '--host', '127.0.0.1', '--port', '0'], {
+      env: { ...process.env, DSH_HOME: home },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    })
+
+    const url = await waitForUrl(90_000)
+    const response = await fetch(`${url}/`)
+    console.log(`\nHTTP ${response.status} at ${url}/`)
+    if (response.status < 200 || response.status >= 400) {
+      throw new Error(`unexpected UI status ${response.status}`)
     }
+    console.log('SMOKE OK: official DSH Web')
+  } finally {
     killTree()
-    console.log('SMOKE OK')
-    process.exit(0)
-  }).catch((e) => fail(`UI 不可达: ${e.message}`))
-}, 500)
+    rmSync(home, { recursive: true, force: true })
+  }
+}
+
+main().catch((error) => {
+  console.error(`\nSMOKE FAIL: ${error.message}`)
+  process.exitCode = 1
+})
