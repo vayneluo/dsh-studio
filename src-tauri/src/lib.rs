@@ -54,6 +54,7 @@ fn start_sidecar<R: Runtime>(app: &mut tauri::App<R>) -> Result<(), String> {
         .map_err(|error| format!("failed to resolve resource directory: {error}"))?;
     let runtime_dir =
         runtime::resolve_runtime_dir(&resource_dir, &project_root()?, cfg!(debug_assertions))?;
+    let runtime_dir = runtime::without_verbatim_prefix(&runtime_dir);
     let data_dir = app
         .path()
         .app_data_dir()

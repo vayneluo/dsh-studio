@@ -290,13 +290,13 @@ Expected: all commands exit 0.
 
 - [ ] **Step 2: Build the installer and measure artifacts**
 
-Run `cargo tauri build --manifest-path src-tauri/Cargo.toml`.
+Run `cargo tauri build` from `src-tauri/`.
 
 Expected: NSIS build exits 0, runtime is at most 230 MiB, installer at most 60 MiB, and the build no longer spends minutes traversing the removed profile tree.
 
 - [ ] **Step 3: Launch development desktop**
 
-Run `cargo tauri dev --manifest-path src-tauri/Cargo.toml` in a persistent terminal session. Wait for the official DSH Web page, confirm the page has no task-board/SSH/whale controls and no console errors, then keep the application and dev process running for user inspection.
+Run `cargo tauri dev` from `src-tauri/` in a persistent terminal session. Wait for the official DSH Web page, confirm the page has no task-board/SSH/whale controls and no console errors, then keep the application and dev process running for user inspection.
 
 - [ ] **Step 4: Report exact evidence**
 

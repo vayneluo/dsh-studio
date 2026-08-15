@@ -28,11 +28,15 @@ node --test scripts/runtime-policy.test.mjs
 node scripts/smoke-test.mjs
 cargo test --manifest-path src-tauri/Cargo.toml
 
-# 打开开发桌面窗口
-cargo tauri dev --manifest-path src-tauri/Cargo.toml
+# 打开开发桌面窗口（Tauri CLI 需在该目录运行）
+Push-Location src-tauri
+cargo tauri dev
+Pop-Location
 
 # 生成 NSIS 安装包
-cargo tauri build --manifest-path src-tauri/Cargo.toml
+Push-Location src-tauri
+cargo tauri build
+Pop-Location
 ```
 
 runtime 展开体积门禁为 230 MiB，NSIS 安装包目标不超过 60 MiB。

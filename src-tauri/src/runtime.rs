@@ -6,6 +6,17 @@ fn is_complete_runtime(runtime: &Path) -> bool {
     runtime.join("node/node.exe").is_file() && runtime.join(DSH_BIN).is_file()
 }
 
+pub fn without_verbatim_prefix(path: &Path) -> PathBuf {
+    let value = path.as_os_str().to_string_lossy();
+    if let Some(network_path) = value.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{network_path}"));
+    }
+    if let Some(local_path) = value.strip_prefix(r"\\?\") {
+        return PathBuf::from(local_path);
+    }
+    path.to_path_buf()
+}
+
 pub fn resolve_runtime_dir(
     resource_dir: &Path,
     project_root: &Path,
@@ -26,7 +37,7 @@ pub fn resolve_runtime_dir(
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_runtime_dir;
+    use super::{resolve_runtime_dir, without_verbatim_prefix};
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -107,5 +118,21 @@ mod tests {
 
         assert!(error.contains("runtime"));
         assert!(error.contains(resources.to_string_lossy().as_ref()));
+    }
+
+    #[test]
+    fn removes_the_windows_verbatim_prefix_before_passing_paths_to_node() {
+        assert_eq!(
+            without_verbatim_prefix(Path::new(r"\\?\D:\dev\dsh-studio\runtime\host\bin.js")),
+            Path::new(r"D:\dev\dsh-studio\runtime\host\bin.js")
+        );
+        assert_eq!(
+            without_verbatim_prefix(Path::new(r"D:\dev\runtime\node.exe")),
+            Path::new(r"D:\dev\runtime\node.exe")
+        );
+        assert_eq!(
+            without_verbatim_prefix(Path::new(r"\\?\UNC\server\share\node.exe")),
+            Path::new(r"\\server\share\node.exe")
+        );
     }
 }
