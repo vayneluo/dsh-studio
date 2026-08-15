@@ -211,18 +211,33 @@ test('startup page uses DS Studio product copy', () => {
   assert.doesNotMatch(source, /DSH host 未能完成启动。/)
 })
 
-test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.2', () => {
+test('Windows executable uses the GUI subsystem without a console window', () => {
+  const source = readFileSync(join(projectRoot, 'src-tauri', 'src', 'main.rs'), 'utf8')
+  assert.match(source, /windows_subsystem\s*=\s*"windows"/)
+})
+
+test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.3', () => {
   const config = JSON.parse(
     readFileSync(join(projectRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'),
   )
 
-  assert.equal(config.version, '0.1.2')
+  assert.equal(config.version, '0.1.3')
   assert.deepEqual(config.bundle.resources, {
     '../runtime/node/node.exe': 'runtime/node/node.exe',
     '../runtime/host': 'runtime/host',
     '../runtime/profile-seed': 'runtime/profile-seed',
   })
   assert.equal(config.app.withGlobalTauri, true)
+})
+
+test('bundled default profile carries a content fingerprint for managed upgrades', () => {
+  const marker = JSON.parse(readFileSync(
+    join(projectRoot, 'runtime', 'profile-seed', 'profiles', 'web', '.dsh-studio-managed.json'),
+    'utf8',
+  ))
+
+  assert.equal(marker.catalogVersion, 1)
+  assert.match(marker.catalogFingerprint, /^[a-f0-9]{64}$/)
 })
 
 test('startup seeds after legacy migration and before sidecar spawn', () => {

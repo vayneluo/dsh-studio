@@ -3,6 +3,7 @@ mod job;
 mod port;
 mod profile;
 mod profile_seed;
+mod profile_upgrade;
 mod runtime;
 mod sidecar;
 
@@ -129,7 +130,9 @@ fn start_sidecar<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<(), String> {
     std::fs::create_dir_all(&data_dir)
         .map_err(|error| format!("failed to create {}: {error}", data_dir.display()))?;
     profile::migrate_legacy_web_profile(&data_dir)?;
-    profile_seed::seed_new_web_profile(&runtime_dir.join("profile-seed/profiles/web"), &data_dir)?;
+    let profile_seed = runtime_dir.join("profile-seed/profiles/web");
+    profile_seed::seed_new_web_profile(&profile_seed, &data_dir)?;
+    profile_upgrade::reconcile_managed_web_profile(&profile_seed, &data_dir)?;
 
     let log_path = data_dir.join("dsh-host.log");
     std::fs::write(&log_path, b"")

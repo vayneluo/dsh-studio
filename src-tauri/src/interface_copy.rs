@@ -1,10 +1,16 @@
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use std::sync::OnceLock;
 use tauri::{
     webview::{PageLoadEvent, PageLoadPayload},
     Runtime, Webview,
 };
 
+const BRAND_PNG: &[u8] = include_bytes!("../../ui/brand.png");
+static RENDERED_INTERFACE_COPY_SCRIPT: OnceLock<String> = OnceLock::new();
+
 const INTERFACE_COPY_SCRIPT: &str = r#"
 (() => {
+  const brandDataUrl = '__DS_STUDIO_BRAND_DATA_URL__';
   const headlineReplacements = new Map([
     ['探索未至之境', '与 DS Studio 一起，探索未至之境'],
     ['Into the Unknown', 'Explore the unknown with DS Studio'],
@@ -48,18 +54,22 @@ const INTERFACE_COPY_SCRIPT: &str = r#"
       : [...root.querySelectorAll(selector)];
     for (const wordmark of wordmarks) {
       if (wordmark.parentElement?.tagName !== 'BUTTON') continue;
-      const label = document.createElement('span');
-      label.setAttribute('data-ds-studio-wordmark', '');
-      label.textContent = 'DS Studio';
-      Object.assign(label.style, {
-        color: 'inherit',
-        fontSize: '22px',
-        fontWeight: '700',
-        letterSpacing: '-0.02em',
-        lineHeight: '1',
-        whiteSpace: 'nowrap',
+      const brand = document.createElement('img');
+      brand.setAttribute('data-ds-studio-wordmark', '');
+      brand.src = brandDataUrl;
+      brand.alt = 'DS Studio';
+      brand.decoding = 'async';
+      brand.draggable = false;
+      Object.assign(brand.style, {
+        display: 'block',
+        width: '182px',
+        height: '24px',
+        objectFit: 'cover',
+        objectPosition: '50% 50%',
+        borderRadius: '5px',
+        backgroundColor: '#fff',
       });
-      wordmark.replaceWith(label);
+      wordmark.replaceWith(brand);
     }
   };
 
@@ -120,6 +130,13 @@ const INTERFACE_COPY_SCRIPT: &str = r#"
 })();
 "#;
 
+fn rendered_interface_copy_script() -> &'static str {
+    RENDERED_INTERFACE_COPY_SCRIPT.get_or_init(|| {
+        let brand_data_url = format!("data:image/png;base64,{}", STANDARD.encode(BRAND_PNG));
+        INTERFACE_COPY_SCRIPT.replace("__DS_STUDIO_BRAND_DATA_URL__", &brand_data_url)
+    })
+}
+
 fn is_dsh_web_url(url: &tauri::Url, expected_port: Option<u16>) -> bool {
     expected_port.is_some_and(|port| {
         url.scheme() == "http" && url.host_str() == Some("127.0.0.1") && url.port() == Some(port)
@@ -134,7 +151,7 @@ pub(crate) fn handle_page_load<R: Runtime>(
     if matches!(payload.event(), PageLoadEvent::Finished)
         && is_dsh_web_url(payload.url(), expected_port)
     {
-        if let Err(error) = webview.eval(INTERFACE_COPY_SCRIPT) {
+        if let Err(error) = webview.eval(rendered_interface_copy_script()) {
             eprintln!("failed to install DS Studio interface copy: {error}");
         }
     }
@@ -142,7 +159,7 @@ pub(crate) fn handle_page_load<R: Runtime>(
 
 #[cfg(test)]
 mod tests {
-    use super::{is_dsh_web_url, INTERFACE_COPY_SCRIPT};
+    use super::{is_dsh_web_url, rendered_interface_copy_script, INTERFACE_COPY_SCRIPT};
 
     #[test]
     fn copy_runs_only_for_the_loopback_dsh_server() {
@@ -202,6 +219,31 @@ mod tests {
                 "missing {expected}"
             );
         }
+    }
+
+    #[test]
+    fn script_embeds_the_supplied_brand_image_instead_of_rendering_plain_text() {
+        let source = include_str!("interface_copy.rs");
+
+        for expected in [
+            "include_bytes!(\"../../ui/brand.png\")",
+            "data:image/png;base64",
+            "createElement('img')",
+            "alt = 'DS Studio'",
+            "objectFit: 'cover'",
+        ] {
+            assert!(source.contains(expected), "missing {expected}");
+        }
+
+        assert!(!INTERFACE_COPY_SCRIPT.contains("label.textContent = 'DS Studio'"));
+    }
+
+    #[test]
+    fn rendered_script_contains_the_png_data_url_and_no_template_marker() {
+        let script = rendered_interface_copy_script();
+
+        assert!(script.contains("data:image/png;base64,iVBOR"));
+        assert!(!script.contains("__DS_STUDIO_BRAND_DATA_URL__"));
     }
 
     #[test]

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { delimiter, dirname, join } from 'node:path'
+import { createHash } from 'node:crypto'
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { delimiter, dirname, join, relative } from 'node:path'
 
 import { auditPortableTree, pruneRuntime } from './runtime-policy.mjs'
 
@@ -129,6 +130,41 @@ const normalizeProfileManifest = (profileDir) => {
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 }
 
+const catalogFingerprint = (profileDir) => {
+  const hash = createHash('sha256')
+  const pending = [profileDir]
+  while (pending.length > 0) {
+    const directory = pending.pop()
+    const entries = readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))
+    for (const entry of entries) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) {
+        pending.push(path)
+        continue
+      }
+      if (!entry.isFile()) {
+        throw new Error(`managed profile contains an unsupported path: ${path}`)
+      }
+      hash.update(relative(profileDir, path).replaceAll('\\', '/'))
+      hash.update('\0')
+      hash.update(readFileSync(path))
+      hash.update('\0')
+    }
+  }
+  return hash.digest('hex')
+}
+
+const writeManagedMarker = (profileDir) => {
+  writeFileSync(
+    join(profileDir, '.dsh-studio-managed.json'),
+    `${JSON.stringify({
+      catalogVersion: 1,
+      catalogFingerprint: catalogFingerprint(profileDir),
+    }, null, 2)}\n`,
+  )
+}
+
 const createIsolatedNpmEnvironment = (staging, node, baseEnv) => {
   const env = Object.fromEntries(
     Object.entries(baseEnv).filter(([name]) => !name.toLowerCase().startsWith('npm_config_')),
@@ -177,6 +213,7 @@ export const buildDefaultProfile = ({
     rmSync(join(profileDir, 'node_modules', '.modules.yaml'), { force: true })
     rmSync(join(profileDir, 'pnpm-lock.yaml'), { force: true })
     const pruned = pruneRuntime(profileDir)
+    writeManagedMarker(profileDir)
     const audit = validateDefaultProfile(profileDir)
     return { audit, profileDir, pruned, seedHome }
   } finally {

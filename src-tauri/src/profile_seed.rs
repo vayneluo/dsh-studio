@@ -39,7 +39,7 @@ fn path_error(action: &str, path: &Path, error: impl std::fmt::Display) -> Strin
     format!("failed to {action} {}: {error}", path.display())
 }
 
-fn path_entry_exists(path: &Path) -> Result<bool, String> {
+pub(crate) fn path_entry_exists(path: &Path) -> Result<bool, String> {
     match fs::symlink_metadata(path) {
         Ok(_) => Ok(true),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
@@ -87,7 +87,7 @@ fn read_json(path: &Path) -> Result<Value, String> {
     serde_json::from_slice(&contents).map_err(|error| path_error("parse", path, error))
 }
 
-fn validate_default_profile(profile: &Path) -> Result<(), String> {
+pub(crate) fn validate_default_profile(profile: &Path) -> Result<(), String> {
     audit_physical_tree(profile)?;
     let manifest_path = profile.join("package.json");
     let manifest = read_json(&manifest_path)?;
@@ -135,7 +135,7 @@ fn validate_default_profile(profile: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn remove_owned_path(path: &Path) -> Result<(), String> {
+pub(crate) fn remove_owned_path(path: &Path) -> Result<(), String> {
     let metadata = match fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
@@ -158,7 +158,7 @@ fn remove_owned_path(path: &Path) -> Result<(), String> {
     }
 }
 
-fn copy_physical_tree(source: &Path, destination: &Path) -> Result<(), String> {
+pub(crate) fn copy_physical_tree(source: &Path, destination: &Path) -> Result<(), String> {
     let metadata = fs::symlink_metadata(source)
         .map_err(|error| path_error("inspect copy source", source, error))?;
     if is_reparse_point(&metadata) {

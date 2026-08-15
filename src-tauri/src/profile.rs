@@ -148,7 +148,7 @@ fn recover_manifest_backup(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn replace_manifest(path: &Path, contents: &[u8]) -> Result<(), String> {
+pub(crate) fn replace_manifest(path: &Path, contents: &[u8]) -> Result<(), String> {
     let temporary = path.with_extension(format!("json.{}.tmp", std::process::id()));
     let backup = migration_backup_path(path);
     if backup.exists() {
@@ -161,6 +161,25 @@ fn replace_manifest(path: &Path, contents: &[u8]) -> Result<(), String> {
         return Err(path_error("replace", path, error));
     }
     let _ = std::fs::remove_file(&backup);
+    Ok(())
+}
+
+pub(crate) fn replace_atomic_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    let temporary = path.with_extension(format!(
+        "{}.{}.tmp",
+        path.extension().and_then(OsStr::to_str).unwrap_or("file"),
+        std::process::id()
+    ));
+    write_synced(&temporary, contents)?;
+    let result = if path.exists() {
+        replace_file(path, &temporary, None)
+    } else {
+        std::fs::rename(&temporary, path)
+    };
+    if let Err(error) = result {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(path_error("replace", path, error));
+    }
     Ok(())
 }
 

@@ -4,15 +4,15 @@ import test from "node:test";
 
 const root = new URL("../", import.meta.url);
 const downloadUrl =
-  "https://github.com/vayneluo/dsh-studio/releases/download/v0.1.2/dsh-studio_0.1.2_x64-setup.exe";
+  "https://github.com/vayneluo/dsh-studio/releases/download/v0.1.3/dsh-studio_0.1.3_x64-setup.exe";
 
-test("page presents DS Studio 0.1.2 and the verified installer", async () => {
+test("page presents DS Studio 0.1.3 and the verified installer", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
 
   assert.match(html, /DS Studio/);
   assert.match(html, /DeepSeek Harness，<br \/><em>Windows 桌面版。<\/em>/);
   assert.doesNotMatch(html, /把 Harness/);
-  assert.match(html, /0\.1\.2/);
+  assert.match(html, /0\.1\.3/);
   assert.ok(html.includes(downloadUrl));
   assert.match(html, /Windows 11/);
 });

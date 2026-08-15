@@ -34,7 +34,7 @@ test('supplied brand inputs remain canonical', async () => {
 
 test('generated app icon no longer uses the legacy D artwork', async () => {
   assert.notEqual(await sha256('src-tauri/icons/icon.png'), '506bd781a772e4651df1322b0d726ec1a7d7909a000e5236db6dd3c6021d972d')
-  assert.ok((await readFile(new URL('src-tauri/icons/icon.ico', root))).length > 40000)
+  assert.notEqual(await sha256('src-tauri/icons/icon.ico'), 'c7b8b8af986fbf16be050bf491e2e703592fd4da85f9e2fe52b8637ffdc0d974')
 })
 ```
 

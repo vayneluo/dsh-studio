@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <strong>v0.1.2</strong> · Windows 11 x64 · MIT<br><br>
-  <a href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.2/dsh-studio_0.1.2_x64-setup.exe"><strong>下载 Windows 安装包</strong></a>
+  <strong>v0.1.3</strong> · Windows 11 x64 · MIT<br><br>
+  <a href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.3/dsh-studio_0.1.3_x64-setup.exe"><strong>下载 Windows 安装包</strong></a>
   ·
-  <a href="https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.2">查看发行说明</a>
+  <a href="https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.3">查看发行说明</a>
 </p>
 
 ## DS Studio 是什么
@@ -29,13 +29,13 @@ DS Studio 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness
 - **Windows 桌面体验**：Tauri 管理窗口、后台 Host、动态端口和退出清理。
 - **多模型服务引导**：支持 DeepSeek、百炼、火山方舟、智谱、OpenAI、Anthropic、Gemini、OpenRouter、Ollama 与 OpenAI Compatible。
 - **自定义兼容接口**：支持 Base URL、API Key、协议选择、模型发现和手动模型名称。
-- **离线默认插件**：全新安装预置 5 个固定版本插件，首次启动无需联网下载插件。
+- **离线默认插件**：安装或升级都会同步 5 个固定版本插件，启动时无需联网下载插件。
 - **本机访问边界**：Host 仅监听 `127.0.0.1`，端口由桌面应用动态分配。
 - **用户数据保护**：升级不会覆盖已有 profile、设置、凭据、会话和自行安装的插件。
 
 ## 安装与首次使用
 
-1. 从 [v0.1.2 Release](https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.2) 下载 `dsh-studio_0.1.2_x64-setup.exe`。
+1. 从 [v0.1.3 Release](https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.3) 下载 `dsh-studio_0.1.3_x64-setup.exe`。
 2. 在 Windows 11 x64 上运行安装程序并启动 DS Studio。
 3. 在首次引导中选择模型服务商；也可以明确跳过，之后前往“设置 → 模型”配置。
 4. OpenAI Compatible 用户填写 Base URL、API Key 与协议后，可获取模型列表或手动添加模型。
@@ -55,7 +55,7 @@ DS Studio 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness
 
 ## 内置插件
 
-全新安装且 `profiles/web` 完全不存在时，DS Studio 会离线播种以下固定版本插件：
+DS Studio 会在首次安装时离线播种，并在升级后自动同步以下固定版本插件：
 
 | 插件 | 版本 |
 | --- | --- |
@@ -65,7 +65,7 @@ DS Studio 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness
 | `dshmarket` | 1.2.2 |
 | `dsh-message-edit` | 0.2.1 |
 
-已有 profile 不补装、不覆盖；插件播种后立即生效，无需重启。应用不包含此前移除的 `@linxin666` 增强 UI、皮肤或 SSH 集成。
+DS Studio 只更新自己管理的内置插件及其依赖；用户自行安装的插件、模型、凭据、设置、会话和工作区数据都会保留。同步在 Host 启动前完成，无需联网或二次重启。应用不包含此前移除的 `@linxin666` 增强 UI、皮肤或 SSH 集成。
 
 ## 桌面运行方式
 
@@ -88,7 +88,7 @@ DS Studio（Tauri 桌面壳）
 - 升级不会覆盖已有 profile、用户插件或工作区数据。
 - 模型调用、模型发现和市场浏览等在线功能仍取决于网络与对应服务可用性。
 
-仅当 `profiles/web` 完全不存在时，应用才会在启动 Host 前从 EXE 内置资源原子播种默认 profile。任何已有 `profiles/web`，包括升级安装或卸载后保留数据的重装，都会直接跳过播种。
+当 `profiles/web` 不存在时，应用会在启动 Host 前从 EXE 内置资源原子播种默认 profile；已有 profile 则执行可重复的托管插件迁移，只合并内置依赖和 bundle，不重置用户配置。手动运行新版安装程序和未来在线更新使用同一套迁移逻辑。
 
 ## 开发与构建
 
