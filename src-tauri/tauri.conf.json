@@ -18,7 +18,8 @@
     "icon": ["icons/icon.ico"],
     "publisher": "dsh-studio",
     "resources": {
-      "../runtime": "runtime"
+      "../runtime/node/node.exe": "runtime/node/node.exe",
+      "../runtime/host": "runtime/host"
     },
     "createUpdaterArtifacts": false,
     "windows": {

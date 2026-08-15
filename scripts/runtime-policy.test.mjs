@@ -93,3 +93,14 @@ test('startup page exposes a text-only error state', () => {
   assert.match(source, /textContent/)
   assert.doesNotMatch(source, /innerHTML/)
 })
+
+test('Tauri bundles only the Node executable and official DSH host', () => {
+  const config = JSON.parse(
+    readFileSync(join(projectRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'),
+  )
+
+  assert.deepEqual(config.bundle.resources, {
+    '../runtime/node/node.exe': 'runtime/node/node.exe',
+    '../runtime/host': 'runtime/host',
+  })
+})
