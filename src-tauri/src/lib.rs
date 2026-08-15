@@ -1,6 +1,7 @@
 mod job;
 mod port;
 mod profile;
+mod profile_seed;
 mod runtime;
 mod sidecar;
 
