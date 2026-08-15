@@ -4,16 +4,19 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { DEFAULT_BUNDLES, validateDefaultProfile } from './default-profile.mjs'
+import { validateDefaultProfile, validateDefaultProfileConfig } from './default-profile.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const root = join(scriptsDir, '..')
-const node = join(root, 'runtime', 'node', 'node.exe')
-const dshBin = join(root, 'runtime', 'host', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-const seedProfile = join(root, 'runtime', 'profile-seed', 'profiles', 'web')
+const runtimeDir = process.env.DSH_SMOKE_RUNTIME_DIR
+  ? resolve(process.env.DSH_SMOKE_RUNTIME_DIR)
+  : join(root, 'runtime')
+const node = join(runtimeDir, 'node', 'node.exe')
+const dshBin = join(runtimeDir, 'host', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+const seedProfile = join(runtimeDir, 'profile-seed', 'profiles', 'web')
 const home = mkdtempSync(join(tmpdir(), 'dsh-studio-smoke-'))
 const useSeed = process.env.DSH_SMOKE_USE_SEED === '1'
 
@@ -68,11 +71,7 @@ const main = async () => {
       env: { ...process.env, DSH_HOME: home },
     })
     if (config.includes('@linxin666')) throw new Error('enhanced Web UI leaked into the official profile')
-    if (useSeed) {
-      for (const bundle of DEFAULT_BUNDLES) {
-        if (!config.includes(bundle)) throw new Error(`seeded bundle missing from config: ${bundle}`)
-      }
-    }
+    if (useSeed) validateDefaultProfileConfig(config)
 
     child = spawn(node, [dshBin, 'web', '--host', '127.0.0.1', '--port', '0'], {
       env: { ...process.env, DSH_HOME: home },

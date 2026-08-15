@@ -47,6 +47,11 @@ test('pruneRuntime keeps Windows x64 runtime files and removes non-runtime asset
     armPty: writeFixture(host, 'node_modules/node-pty/prebuilds/win32-arm64/pty.node'),
     darwinPty: writeFixture(host, 'node_modules/node-pty/prebuilds/darwin-x64/pty.node'),
     source: writeFixture(host, 'node_modules/node-pty/src/windowsPtyAgent.ts'),
+    genericSource: writeFixture(host, 'node_modules/example/src/index.ts'),
+    genericWinNative: writeFixture(host, 'node_modules/example/prebuilds/win32-x64/native.node'),
+    genericLinuxNative: writeFixture(host, 'node_modules/example/prebuilds/linux-x64/native.node'),
+    genericDarwinNative: writeFixture(host, 'node_modules/example/prebuilds/darwin-x64/native.node'),
+    genericSharedObject: writeFixture(host, 'node_modules/example/native/addon.so'),
   }
 
   const result = pruneRuntime(host)
@@ -60,7 +65,8 @@ test('pruneRuntime keeps Windows x64 runtime files and removes non-runtime asset
   assert.equal(kept.has(files.keep), true)
   assert.equal(kept.has(files.license), true)
   assert.equal(kept.has(files.winPty), true)
-  for (const path of [files.pdb, files.map, files.dts, files.dmts, files.dcts, files.armPty, files.darwinPty, files.source]) {
+  assert.equal(kept.has(files.genericWinNative), true)
+  for (const path of [files.pdb, files.map, files.dts, files.dmts, files.dcts, files.armPty, files.darwinPty, files.source, files.genericSource, files.genericLinuxNative, files.genericDarwinNative, files.genericSharedObject]) {
     assert.equal(kept.has(path), false, `${path} should be removed`)
   }
 })
@@ -153,7 +159,7 @@ test('bundle host builds the official DSH runtime and isolated default profile s
   assert.doesNotMatch(source, /@linxin666|dsh-web-ui|dsh-skins/)
   assert.doesNotMatch(source, /run\(['"]pnpm['"]/, 'runtime builds must not require a global pnpm executable')
   assert.match(source, /import \{ buildDefaultProfile \} from ['"]\.\/default-profile\.mjs['"]/)
-  assert.match(source, /buildDefaultProfile\(\{ node, npmCli, dshBin, staging \}\)/)
+  assert.match(source, /buildDefaultProfile\(\{ node, dshBin, staging \}\)/)
   assert.ok(source.indexOf('buildDefaultProfile(') < source.indexOf('rmSync(extracted,'))
   assert.match(source, /pruneRuntime\(host\)/)
   assert.match(source, /auditRuntime\(staging\)/)
@@ -170,6 +176,10 @@ test('bundle host builds the official DSH runtime and isolated default profile s
   assert.match(source, /npmEnv\[pathKey\][^\n]*dirname\(node\)/)
   assert.match(source, /rmSync\(userConfig/)
   assert.match(source, /rmSync\(globalConfig/)
+  assert.match(source, /smoke-test\.mjs/)
+  assert.match(source, /DSH_SMOKE_RUNTIME_DIR:\s*staging/)
+  assert.match(source, /DSH_SMOKE_USE_SEED:\s*['"]1['"]/)
+  assert.ok(source.indexOf('DSH_SMOKE_USE_SEED') < source.indexOf('auditRuntime(staging)'))
 })
 
 test('startup page exposes a text-only error state', () => {
@@ -211,7 +221,7 @@ test('HTTP smoke can exercise and validate the bundled profile seed', () => {
   const source = readFileSync(join(scriptsDir, 'smoke-test.mjs'), 'utf8')
 
   assert.match(source, /DSH_SMOKE_USE_SEED/)
-  assert.match(source, /runtime['"], ['"]profile-seed/)
+  assert.match(source, /runtimeDir, ['"]profile-seed/)
   assert.match(source, /validateDefaultProfile/)
-  assert.match(source, /DEFAULT_BUNDLES/)
+  assert.match(source, /validateDefaultProfileConfig/)
 })

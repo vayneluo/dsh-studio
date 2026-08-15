@@ -147,6 +147,35 @@ test('rejects an installed package version mismatch', async (t) => {
   assert.throws(() => validateDefaultProfile(profile), /dshmarket.*version/i)
 })
 
+test('requires the exact runtime bundle headers in order', async () => {
+  const { validateDefaultProfileConfig } = await import('./default-profile.mjs')
+  const valid = [
+    '# == @deepseek-ai/dsh-base',
+    '# == @deepseek-ai/dsh-base',
+    '# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app',
+    '# == @deepseek-ai/dsh-web-app',
+    '# == dsh-at-file',
+    '# == @liustack/modlens',
+    '# == dsh-better-sidebar',
+    '# == dshmarket',
+    '# == dsh-message-edit',
+  ].join('\n')
+
+  assert.equal(typeof validateDefaultProfileConfig, 'function')
+  assert.doesNotThrow(() => validateDefaultProfileConfig(valid))
+  assert.throws(
+    () => validateDefaultProfileConfig(`${valid}\n# == unexpected-plugin`),
+    /runtime bundle headers/i,
+  )
+  assert.throws(
+    () => validateDefaultProfileConfig(valid.replace(
+      '# == dsh-at-file\n# == @liustack/modlens',
+      '# == @liustack/modlens\n# == dsh-at-file',
+    )),
+    /runtime bundle headers/i,
+  )
+})
+
 test('builds a portable hoisted seed from the immutable GitHub tarball', async (t) => {
   const staging = mkdtempSync(join(tmpdir(), 'dsh-default-profile-build-test-'))
   t.after(() => rmSync(staging, { recursive: true, force: true }))
@@ -157,7 +186,6 @@ test('builds a portable hoisted seed from the immutable GitHub tarball', async (
   assert.equal(typeof buildDefaultProfile, 'function')
   const result = buildDefaultProfile({
     node: 'C:\\staged-node\\node.exe',
-    npmCli: 'C:\\staged-node\\npm-cli.js',
     dshBin: 'C:\\staged-host\\dsh.js',
     staging,
     baseEnv: {

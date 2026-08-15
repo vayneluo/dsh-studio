@@ -5,7 +5,7 @@ export const DEFAULT_PROFILE_BUDGET_BYTES = 35 * 1024 * 1024
 export const DEFAULT_RUNTIME_BUDGET_BYTES = 260 * 1024 * 1024
 export const DEFAULT_INSTALLER_BUDGET_BYTES = 70 * 1024 * 1024
 
-const removableTypePattern = /(?:\.pdb|\.map|\.d\.(?:ts|mts|cts))$/i
+const removableTypePattern = /(?:\.pdb|\.map|\.d\.(?:ts|mts|cts)|\.(?:ts|tsx|mts|cts|c|cc|cpp|h|hpp|gyp|gypi|dylib)|\.so(?:\.\d+)*)$/i
 const nodePtySourceDirectories = new Set([
   'build',
   'deps',
@@ -76,6 +76,23 @@ const findNodePtyDirectories = (root) => {
   return matches
 }
 
+const findPrebuildDirectories = (root) => {
+  const matches = []
+  const directories = [root]
+
+  while (directories.length > 0) {
+    const directory = directories.pop()
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue
+      const path = join(directory, entry.name)
+      if (entry.name === 'prebuilds') matches.push(path)
+      else directories.push(path)
+    }
+  }
+
+  return matches
+}
+
 const removeDirectory = (path) => {
   const files = walkPhysicalFiles(path)
   const bytes = files.reduce((total, file) => total + file.bytes, 0)
@@ -99,7 +116,9 @@ export const pruneRuntime = (hostDir) => {
       }
     }
 
-    const prebuilds = join(nodePtyDir, 'prebuilds')
+  }
+
+  for (const prebuilds of findPrebuildDirectories(hostDir)) {
     try {
       for (const entry of readdirSync(prebuilds, { withFileTypes: true })) {
         if (!entry.isDirectory() || entry.name === 'win32-x64') continue

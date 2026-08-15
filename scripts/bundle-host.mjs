@@ -98,10 +98,17 @@ const nodeDir = join(staging, 'node')
 try {
   const { node, npmCli, extracted } = installNode(nodeDir, staging)
   const dshBin = installDsh(node, npmCli, host, staging)
-  const profile = buildDefaultProfile({ node, npmCli, dshBin, staging })
+  const profile = buildDefaultProfile({ node, dshBin, staging })
   rmSync(extracted, { recursive: true, force: true })
   const pruned = pruneRuntime(host)
   verifyOfficialProfile(node, dshBin)
+  run(process.execPath, [join(scriptsDir, 'smoke-test.mjs')], {
+    env: {
+      ...process.env,
+      DSH_SMOKE_RUNTIME_DIR: staging,
+      DSH_SMOKE_USE_SEED: '1',
+    },
+  })
   const audit = auditRuntime(staging)
   replaceRuntime(staging, runtime)
 

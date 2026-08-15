@@ -46,13 +46,12 @@ export const DEFAULT_BUNDLES = Object.freeze([
   ...DEFAULT_PLUGINS.map(({ bundle }) => bundle),
 ])
 
-const expectedDependencySpec = (plugin) => (
-  plugin.packageName === 'dsh-at-file' ? plugin.target : plugin.version
-)
+const packageSpecs = (plugin) => plugin.packageName === 'dsh-at-file'
+  ? { dependency: plugin.target, install: AT_FILE_TARBALL }
+  : { dependency: plugin.version, install: plugin.target }
 
-const installTarget = (plugin) => (
-  plugin.packageName === 'dsh-at-file' ? AT_FILE_TARBALL : plugin.target
-)
+const expectedDependencySpec = (plugin) => packageSpecs(plugin).dependency
+const installTarget = (plugin) => packageSpecs(plugin).install
 
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
 
@@ -61,6 +60,19 @@ const sameArray = (actual, expected) => (
   && actual.length === expected.length
   && actual.every((value, index) => value === expected[index])
 )
+
+export const validateDefaultProfileConfig = (config) => {
+  if (config.includes('@linxin666')) {
+    throw new Error('enhanced Web UI leaked into the seeded runtime config')
+  }
+  const headers = [...config.matchAll(/^# == ([^,\r\n]+)\r?$/gm)]
+    .map((match) => match[1])
+  const uniqueHeaders = [...new Set(headers)]
+  if (!sameArray(uniqueHeaders, DEFAULT_BUNDLES)) {
+    throw new Error(`seeded runtime bundle headers do not match the expected order: ${uniqueHeaders.join(', ')}`)
+  }
+  return uniqueHeaders
+}
 
 export const validateDefaultProfile = (profileDir) => {
   const manifest = readJson(join(profileDir, 'package.json'))
@@ -111,7 +123,8 @@ const runCommand = (command, args, options = {}) => {
 const normalizeProfileManifest = (profileDir) => {
   const manifestPath = join(profileDir, 'package.json')
   const manifest = readJson(manifestPath)
-  manifest.dependencies['dsh-at-file'] = expectedDependencySpec(DEFAULT_PLUGINS[0])
+  const gitPlugin = DEFAULT_PLUGINS.find(({ packageName }) => packageName === 'dsh-at-file')
+  manifest.dependencies[gitPlugin.packageName] = expectedDependencySpec(gitPlugin)
   manifest.dsh.profile.bundles = [...DEFAULT_BUNDLES]
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 }
