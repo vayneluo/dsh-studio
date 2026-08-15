@@ -46,11 +46,13 @@ pub fn run() {
             }
 
             let port = port::find_free_port()?;
+            let log_path = data_dir.join("dsh-host.log");
             let handle = sidecar::spawn(
-                node.to_str().ok_or("node path not utf8")?,
-                dsh_bin.to_str().ok_or("dsh path not utf8")?,
+                &node,
+                &dsh_bin,
                 port,
-                data_dir.to_str().ok_or("data dir not utf8")?,
+                &data_dir,
+                &log_path,
             )?;
 
             if !sidecar::wait_ready(port, std::time::Duration::from_secs(30)) {
