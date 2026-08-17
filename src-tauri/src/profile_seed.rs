@@ -16,7 +16,7 @@ const PLUGINS: [(&str, &str, &str); 4] = [
     ),
     ("dsh-better-sidebar", "0.12.1", "0.12.1"),
     ("dshmarket", "1.2.2", "1.2.2"),
-    ("dsh-message-edit", "0.2.1", "0.2.1"),
+    ("dsh-message-edit", "0.2.2", "0.2.2"),
 ];
 const BUNDLES: [&str; 6] = [
     "@deepseek-ai/dsh-base",

@@ -62,7 +62,7 @@ DS Studio 会在首次安装时离线播种，并在升级后自动同步以下�
 | `dsh-at-file` | 0.6.0 |
 | `dsh-better-sidebar` | 0.12.1 |
 | `dshmarket` | 1.2.2 |
-| `dsh-message-edit` | 0.2.1 |
+| `dsh-message-edit` | 0.2.2 |
 
 DS Studio 只更新自己管理的内置插件及其依赖；用户自行安装的插件、模型、凭据、设置、会话和工作区数据都会保留。同步在 Host 启动前完成，无需联网或二次重启。应用不包含此前移除的 `@linxin666` 增强 UI、皮肤或 SSH 集成。
 

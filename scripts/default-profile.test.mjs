@@ -7,7 +7,7 @@ import test from 'node:test'
 const EXPECTED_DEPENDENCIES = {
   'dsh-at-file': 'github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850',
   'dsh-better-sidebar': '0.12.1',
-  'dsh-message-edit': '0.2.1',
+  'dsh-message-edit': '0.2.2',
   dshmarket: '1.2.2',
 }
 
@@ -27,7 +27,7 @@ const writeInstalledPackages = (profile) => {
     ['dsh-at-file', '0.6.0'],
     ['dsh-better-sidebar', '0.12.1'],
     ['dshmarket', '1.2.2'],
-    ['dsh-message-edit', '0.2.1'],
+    ['dsh-message-edit', '0.2.2'],
   ]) {
     const packageDir = join(profile, 'node_modules', ...packageName.split('/'))
     mkdirSync(packageDir, { recursive: true })
@@ -83,8 +83,8 @@ test('default plugin catalog is fixed and reproducible', async () => {
       {
         bundle: 'dsh-message-edit',
         packageName: 'dsh-message-edit',
-        version: '0.2.1',
-        target: 'dsh-message-edit@0.2.1',
+        version: '0.2.2',
+        target: 'dsh-message-edit@0.2.2',
       },
     ])
     assert.deepEqual(DEFAULT_BUNDLES, [

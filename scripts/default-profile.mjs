@@ -30,8 +30,8 @@ export const DEFAULT_PLUGINS = Object.freeze([
   {
     bundle: 'dsh-message-edit',
     packageName: 'dsh-message-edit',
-    version: '0.2.1',
-    target: 'dsh-message-edit@0.2.1',
+    version: '0.2.2',
+    target: 'dsh-message-edit@0.2.2',
   },
 ])
 
