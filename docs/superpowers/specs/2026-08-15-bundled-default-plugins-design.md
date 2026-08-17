@@ -5,19 +5,18 @@
 
 ## Goal
 
-Ship five curated DSH Web plugins inside the Windows installer so a genuinely new installation has them enabled on its first launch without network access or a restart. Existing `profiles/web` data must never be seeded, merged, or overwritten by this feature.
+Ship four curated DSH Web plugins inside the Windows installer so a genuinely new installation has them enabled on its first launch without network access or a restart. Existing `profiles/web` data must never be seeded, merged, or overwritten by this feature.
 
 ## Fixed plugin set
 
 | Display name | Reproducible install target | Expected package version |
 | --- | --- | --- |
 | dsh-at-file | `github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850` | 0.6.0 |
-| modlens | `@liustack/modlens@3.16.6` | 3.16.6 |
 | dsh-better-sidebar | `dsh-better-sidebar@0.12.1` | 0.12.1 |
 | dshmarket | `dshmarket@1.2.2` | 1.2.2 |
 | dsh-message-edit | `dsh-message-edit@0.2.1` | 0.2.1 |
 
-All five packages declare MIT licenses. Their distributed license files remain in the seed, and the repository documents the bundled package names and versions.
+All four packages declare MIT licenses. Their distributed license files remain in the seed, and the repository documents the bundled package names and versions.
 
 ## Selected approach
 

@@ -16,12 +16,6 @@ export const DEFAULT_PLUGINS = Object.freeze([
     target: 'github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850',
   },
   {
-    bundle: '@liustack/modlens',
-    packageName: '@liustack/modlens',
-    version: '3.16.6',
-    target: '@liustack/modlens@3.16.6',
-  },
-  {
     bundle: 'dsh-better-sidebar',
     packageName: 'dsh-better-sidebar',
     version: '0.12.1',
@@ -90,7 +84,7 @@ export const validateDefaultProfile = (profileDir) => {
     }
   }
   if (!sameArray(manifest.dsh?.profile?.bundles, DEFAULT_BUNDLES)) {
-    throw new Error('default profile bundles do not match the expected seven-bundle order')
+    throw new Error('default profile bundles do not match the expected bundle order')
   }
 
   for (const plugin of DEFAULT_PLUGINS) {

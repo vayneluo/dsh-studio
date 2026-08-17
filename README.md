@@ -60,7 +60,6 @@ DS Studio 会在首次安装时离线播种，并在升级后自动同步以下�
 | 插件 | 版本 |
 | --- | --- |
 | `dsh-at-file` | 0.6.0 |
-| `@liustack/modlens` | 3.16.6 |
 | `dsh-better-sidebar` | 0.12.1 |
 | `dshmarket` | 1.2.2 |
 | `dsh-message-edit` | 0.2.1 |

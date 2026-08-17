@@ -30,7 +30,6 @@ impl Fixture {
                 "0.6.0",
                 "github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850",
             ),
-            ("@liustack/modlens", "3.16.6", "3.16.6"),
             ("dsh-better-sidebar", "0.12.1", "0.12.1"),
             ("dshmarket", "1.2.2", "1.2.2"),
             ("dsh-message-edit", "0.2.1", "0.2.1"),
@@ -49,7 +48,6 @@ impl Fixture {
                     "@deepseek-ai/dsh-base",
                     "@deepseek-ai/dsh-web-app",
                     "dsh-at-file",
-                    "@liustack/modlens",
                     "dsh-better-sidebar",
                     "dshmarket",
                     "dsh-message-edit"
@@ -136,7 +134,6 @@ fn upgrades_a_bare_existing_profile_without_touching_user_data() {
             "@deepseek-ai/dsh-base",
             "@deepseek-ai/dsh-web-app",
             "dsh-at-file",
-            "@liustack/modlens",
             "dsh-better-sidebar",
             "dshmarket",
             "dsh-message-edit"
@@ -188,7 +185,6 @@ fn preserves_user_plugins_while_refreshing_managed_packages() {
             "@deepseek-ai/dsh-base",
             "@deepseek-ai/dsh-web-app",
             "dsh-at-file",
-            "@liustack/modlens",
             "dsh-better-sidebar",
             "dshmarket",
             "dsh-message-edit",

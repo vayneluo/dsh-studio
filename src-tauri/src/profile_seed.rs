@@ -8,22 +8,20 @@ use windows_sys::Win32::Storage::FileSystem::{
 };
 
 const STAGING_NAME: &str = ".web.dsh-studio-seed";
-const PLUGINS: [(&str, &str, &str); 5] = [
+const PLUGINS: [(&str, &str, &str); 4] = [
     (
         "dsh-at-file",
         "0.6.0",
         "github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850",
     ),
-    ("@liustack/modlens", "3.16.6", "3.16.6"),
     ("dsh-better-sidebar", "0.12.1", "0.12.1"),
     ("dshmarket", "1.2.2", "1.2.2"),
     ("dsh-message-edit", "0.2.1", "0.2.1"),
 ];
-const BUNDLES: [&str; 7] = [
+const BUNDLES: [&str; 6] = [
     "@deepseek-ai/dsh-base",
     "@deepseek-ai/dsh-web-app",
     "dsh-at-file",
-    "@liustack/modlens",
     "dsh-better-sidebar",
     "dshmarket",
     "dsh-message-edit",

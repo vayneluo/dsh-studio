@@ -53,7 +53,6 @@ import {
 test('default plugin catalog is fixed and reproducible', () => {
   assert.deepEqual(DEFAULT_PLUGINS.map(({ target }) => target), [
     'github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850',
-    '@liustack/modlens@3.16.6',
     'dsh-better-sidebar@0.12.1',
     'dshmarket@1.2.2',
     'dsh-message-edit@0.2.1',
@@ -90,7 +89,6 @@ export const DEFAULT_INSTALLER_BUDGET_BYTES = 70 * 1024 * 1024
 
 export const DEFAULT_PLUGINS = Object.freeze([
   { bundle: 'dsh-at-file', packageName: 'dsh-at-file', version: '0.6.0', target: 'github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850' },
-  { bundle: '@liustack/modlens', packageName: '@liustack/modlens', version: '3.16.6', target: '@liustack/modlens@3.16.6' },
   { bundle: 'dsh-better-sidebar', packageName: 'dsh-better-sidebar', version: '0.12.1', target: 'dsh-better-sidebar@0.12.1' },
   { bundle: 'dshmarket', packageName: 'dshmarket', version: '1.2.2', target: 'dshmarket@1.2.2' },
   { bundle: 'dsh-message-edit', packageName: 'dsh-message-edit', version: '0.2.1', target: 'dsh-message-edit@0.2.1' },

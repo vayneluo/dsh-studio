@@ -5,7 +5,6 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 const EXPECTED_DEPENDENCIES = {
-  '@liustack/modlens': '3.16.6',
   'dsh-at-file': 'github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850',
   'dsh-better-sidebar': '0.12.1',
   'dsh-message-edit': '0.2.1',
@@ -18,7 +17,6 @@ const EXPECTED_BUNDLES = [
   '@deepseek-ai/dsh-base',
   '@deepseek-ai/dsh-web-app',
   'dsh-at-file',
-  '@liustack/modlens',
   'dsh-better-sidebar',
   'dshmarket',
   'dsh-message-edit',
@@ -27,7 +25,6 @@ const EXPECTED_BUNDLES = [
 const writeInstalledPackages = (profile) => {
   for (const [packageName, version] of [
     ['dsh-at-file', '0.6.0'],
-    ['@liustack/modlens', '3.16.6'],
     ['dsh-better-sidebar', '0.12.1'],
     ['dshmarket', '1.2.2'],
     ['dsh-message-edit', '0.2.1'],
@@ -72,12 +69,6 @@ test('default plugin catalog is fixed and reproducible', async () => {
         target: 'github:omdsh-dev/dsh-at-file#e579d0deb2295d5fea37a89244f8d584999be850',
       },
       {
-        bundle: '@liustack/modlens',
-        packageName: '@liustack/modlens',
-        version: '3.16.6',
-        target: '@liustack/modlens@3.16.6',
-      },
-      {
         bundle: 'dsh-better-sidebar',
         packageName: 'dsh-better-sidebar',
         version: '0.12.1',
@@ -100,7 +91,6 @@ test('default plugin catalog is fixed and reproducible', async () => {
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
       'dsh-at-file',
-      '@liustack/modlens',
       'dsh-better-sidebar',
       'dshmarket',
       'dsh-message-edit',
@@ -108,7 +98,7 @@ test('default plugin catalog is fixed and reproducible', async () => {
   })
 })
 
-test('validates the exact seven-bundle profile and installed versions', async (t) => {
+test('validates the exact six-bundle profile and installed versions', async (t) => {
   const profile = makeValidProfile(t)
   const { validateDefaultProfile } = await import('./default-profile.mjs')
 
@@ -155,7 +145,6 @@ test('requires the exact runtime bundle headers in order', async () => {
     '# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app',
     '# == @deepseek-ai/dsh-web-app',
     '# == dsh-at-file',
-    '# == @liustack/modlens',
     '# == dsh-better-sidebar',
     '# == dshmarket',
     '# == dsh-message-edit',
@@ -169,8 +158,8 @@ test('requires the exact runtime bundle headers in order', async () => {
   )
   assert.throws(
     () => validateDefaultProfileConfig(valid.replace(
-      '# == dsh-at-file\n# == @liustack/modlens',
-      '# == @liustack/modlens\n# == dsh-at-file',
+      '# == dsh-at-file\n# == dsh-better-sidebar',
+      '# == dsh-better-sidebar\n# == dsh-at-file',
     )),
     /runtime bundle headers/i,
   )
@@ -202,7 +191,6 @@ test('builds a portable hoisted seed from the immutable GitHub tarball', async (
         [
           '@deepseek-ai/dsh-base',
           '@deepseek-ai/dsh-web-app',
-          '@liustack/modlens',
           'dsh-at-file',
           'dsh-better-sidebar',
           'dsh-message-edit',
