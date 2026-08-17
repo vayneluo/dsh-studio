@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <strong>v0.1.3</strong> · Windows 11 x64 · MIT<br><br>
-  <a href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.3/dsh-studio_0.1.3_x64-setup.exe"><strong>下载 Windows 安装包</strong></a>
+  <strong>v0.1.4</strong> · Windows 11 x64 · MIT<br><br>
+  <a href="https://github.com/vayneluo/dsh-studio/releases/download/v0.1.4/dsh-studio_0.1.4_x64-setup.exe"><strong>下载 Windows 安装包</strong></a>
   ·
-  <a href="https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.3">查看发行说明</a>
+  <a href="https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.4">查看发行说明</a>
 </p>
 
 ## DS Studio 是什么
@@ -35,7 +35,7 @@ DS Studio 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness
 
 ## 安装与首次使用
 
-1. 从 [v0.1.3 Release](https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.3) 下载 `dsh-studio_0.1.3_x64-setup.exe`。
+1. 从 [v0.1.4 Release](https://github.com/vayneluo/dsh-studio/releases/tag/v0.1.4) 下载 `dsh-studio_0.1.4_x64-setup.exe`。
 2. 在 Windows 11 x64 上运行安装程序并启动 DS Studio。
 3. 在首次引导中选择模型服务商；也可以明确跳过，之后前往“设置 → 模型”配置。
 4. OpenAI Compatible 用户填写 Base URL、API Key 与协议后，可获取模型列表或手动添加模型。

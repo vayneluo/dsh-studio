@@ -216,12 +216,12 @@ test('Windows executable uses the GUI subsystem without a console window', () =>
   assert.match(source, /windows_subsystem\s*=\s*"windows"/)
 })
 
-test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.3', () => {
+test('Tauri bundles the official runtime and isolated default profile seed at version 0.1.4', () => {
   const config = JSON.parse(
     readFileSync(join(projectRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'),
   )
 
-  assert.equal(config.version, '0.1.3')
+  assert.equal(config.version, '0.1.4')
   assert.deepEqual(config.bundle.resources, {
     '../runtime/node/node.exe': 'runtime/node/node.exe',
     '../runtime/host': 'runtime/host',
