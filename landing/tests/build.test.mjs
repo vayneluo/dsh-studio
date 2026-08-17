@@ -22,5 +22,5 @@ test("buildSite creates a deployable dist with source and brand assets", async (
   const html = await readFile(new URL("dist/index.html", root), "utf8");
   assert.doesNotMatch(html, /0\.1\.1/);
   assert.doesNotMatch(html, /0\.1\.2/);
-  assert.match(html, /0\.1\.3/);
+  assert.match(html, /0\.1\.4/);
 });
